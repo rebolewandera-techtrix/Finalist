@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChainGrade  -  How It Works</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Page Layout ────────────────────────────────────────── */
+    .hiw-stage {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .hiw-stage:last-of-type { border-bottom: none; }
+
+    .stage-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .hiw-stage h2 {
+      font-size: clamp(1.3rem, 3.5vw, 1.7rem);
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.85rem;
+      line-height: 1.25;
+    }
+
+    .plain-explain {
+      font-size: 1rem;
+      color: var(--text-muted);
+      line-height: 1.85;
+      margin-bottom: 1.25rem;
+      max-width: 620px;
+    }
+
+    .technical-note {
+      font-size: 0.83rem;
+      color: var(--text-muted);
+      border-left: 3px solid var(--border-color);
+      padding-left: 1rem;
+      margin-bottom: 2rem;
+      line-height: 1.75;
+    }
+    .technical-note strong { color: var(--text-main); }
+
+    /* ── Mockup Shell ───────────────────────────────────────── */
+    .mockup {
+      background: var(--surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .mockup-titlebar {
+      background: var(--background);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tb-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+
+    .tb-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .mockup-body {
+      padding: 1.5rem;
+    }
+
+    /* ── Sim Shared ─────────────────────────────────────────── */
+    .sim-steps { margin-bottom: 1.25rem; }
+
+    .sim-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.875rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .sim-row:last-child { border-bottom: none; }
+
+    .sim-check {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+    .sim-check.active {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+      animation: pulse 0.9s ease-in-out infinite;
+    }
+    .sim-check.done {
+      background: var(--accent-green);
+      border-color: var(--accent-green);
+      color: white;
+      font-size: 12px;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
+    .sim-row-text { font-size: 0.875rem; color: var(--text-main); font-weight: 500; }
+    .sim-row-detail {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: monospace;
+      margin-top: 2px;
+    }
+
+    .sim-progress-bar {
+      height: 5px;
+      background: var(--border-color);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 4px 0;
+    }
+    .sim-progress-fill {
+      height: 100%;
+      background: var(--accent-blue);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.06s linear;
+    }
+
+    .hash-block {
+      font-family: monospace;
+      font-size: 0.78rem;
+      background: rgba(37, 99, 235, 0.07);
+      color: var(--accent-blue);
+      padding: 0.5rem 0.875rem;
+      border-radius: 6px;
+      word-break: break-all;
+      margin-top: 0.75rem;
+    }
+
+    .chain-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.73rem;
+      font-weight: 700;
+      color: #047857;
+      background: rgba(16, 185, 129, 0.12);
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-top: 0.6rem;
+    }
+    .chain-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+
+    .sim-btn {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 9px 20px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .sim-btn:hover { background: #1d4ed8; }
+    .sim-btn:disabled { background: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
+
+    .sim-reset-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ── Approval mockup ───────────────────────────────────── */
+    .reviewer-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .reviewer-card {
+      background: var(--background);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.875rem 0.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      user-select: none;
+    }
+    .reviewer-card:hover:not(.approved) { border-color: var(--accent-blue); }
+    .reviewer-card.approved {
+      border-color: var(--accent-green);
+      background: rgba(16, 185, 129, 0.07);
+      cursor: default;
+    }
+
+    .reviewer-avatar { font-size: 1.6rem; margin-bottom: 5px; }
+    .reviewer-name { font-size: 0.78rem; font-weight: 700; color: var(--text-main); }
+    .reviewer-status { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; min-height: 1rem; }
+
+    .approval-tally {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 0.6rem 0 0;
+      border-top: 1px solid var(--border-color);
+      margin-top: 0.5rem;
+    }
+
+    .approval-success {
+      display: none;
+      margin-top: 1rem;
+      padding: 0.875rem 1rem;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid var(--accent-green);
+      border-radius: 8px;
+      text-align: center;
+    }
+    .approval-success .icon { font-size: 1.1rem; margin-bottom: 4px; }
+    .approval-success .title { font-size: 0.9rem; font-weight: 700; color: #047857; }
+    .approval-success .detail { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+
+    /* ── Significance cards ──────────────────────────────── */
+    .sig-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .sig-card {
+      background: var(--background);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .sig-icon { font-size: 1.25rem; margin-bottom: 0.4rem; }
+    .sig-title { font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.3rem; }
+    .sig-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.55; }
+
+    /* ── Submission record preview ───────────────────────── */
+    .record-preview {
+      background: var(--background);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .record-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .record-filename { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
+    .record-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+    .record-hash { font-family: monospace; font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem; word-break: break-all; }
+
+    /* ── Upload drop area ────────────────────────────────── */
+    .upload-zone {
+      background: var(--background);
+      border: 2px dashed var(--border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+      margin-bottom: 1rem;
+    }
+    .upload-zone:hover { border-color: var(--accent-blue); }
+
+    @media (max-width: 600px) {
+      .sig-grid { grid-template-columns: 1fr; }
+      .reviewer-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="logo" style="cursor: pointer;" onclick="window.location.href='index.html'">ChainGrade</div>
+    <div style="display: flex; align-items: center; gap: 1.25rem;">
+      <a href="index.html" style="font-size: 0.875rem; color: var(--text-muted); text-decoration: none; font-weight: 600;">Back</a>
+      <a href="index.html#wallet-section">
+        <button class="primary-btn" style="width: auto; padding: 8px 18px;">Connect Wallet</button>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Page header -->
+  <div style="max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 1.5rem;">
+    <p style="font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">ChainGrade / How It Works</p>
+    <h1 style="font-size: clamp(1.75rem, 4.5vw, 2.4rem); font-weight: 900; color: var(--text-main); line-height: 1.15; margin-bottom: 1rem;">Three steps. One permanent record.</h1>
+    <p style="font-size: 1rem; color: var(--text-muted); line-height: 1.85; max-width: 600px;">
+      Each simulation below runs in your browser  -  click through to see exactly what happens to your submission at every stage of the ChainGrade pipeline.
+    </p>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────
+       STAGE 01  -  Provenance Anchor
+  ───────────────────────────────────────────────────────────────── -->
+  <section class="hiw-stage" id="provenance">
+
+    <p class="stage-label">Stage 01</p>
+    <h2>Connect your wallet.<br>Claim your identity.</h2>
+
+    <p class="plain-explain">
+      Think of your wallet like a personal stamp  -  unique to you and impossible to copy. When you connect it to ChainGrade, your public address becomes the permanent root of every submission you ever make. No email, no username  -  your cryptographic key <em>is</em> the record.
+    </p>
+
+    <p class="technical-note">
+      Under the hood: your wallet signs a challenge with its private key. The resulting public address  -  derived from that signature  -  becomes your <strong>identity anchor</strong> on the Polygon Amoy ledger. The private key stays on your device at all times. Only the signed assertion hits the chain.
+    </p>
+
+    <!-- Wallet Simulation -->
+    <div class="mockup">
+      <div class="mockup-titlebar">
+        <div class="tb-dot" style="background:#ef4444;"></div>
+        <div class="tb-dot" style="background:#f59e0b;"></div>
+        <div class="tb-dot" style="background:#10b981;"></div>
+        <span class="tb-label">Wallet Connection  -  Simulation</span>
+      </div>
+      <div class="mockup-body">
+
+        <div style="text-align: center; margin-bottom: 1.25rem;">
+          <div id="w-icon" style="font-size: 2.5rem; margin-bottom: 0.75rem; transition: all 0.3s;">🔐</div>
+          <p id="w-intro" style="font-size: 0.9rem; color: var(--text-muted);">Click the button below to watch the wallet binding process step by step.</p>
+        </div>
+
+        <div class="sim-steps" id="w-steps" style="display:none;">
+          <div class="sim-row">
+            <div class="sim-check" id="wc1">1</div>
+            <div>
+              <div class="sim-row-text">Wallet extension detected</div>
+              <div class="sim-row-detail" id="wc1d">waiting...</div>
+            </div>
+          </div>
+          <div class="sim-row">
+            <div class="sim-check" id="wc2">2</div>
+            <div>
+              <div class="sim-row-text">Public address retrieved</div>
+              <div class="sim-row-detail" id="wc2d">waiting...</div>
+            </div>
+          </div>
+          <div class="sim-row">
+            <div class="sim-check" id="wc3">3</div>
+            <div>
+              <div class="sim-row-text">Network confirmed  -  Polygon Amoy</div>
+              <div class="sim-row-detail" id="wc3d">waiting...</div>
+            </div>
+          </div>
+          <div class="sim-row">
+            <div class="sim-check" id="wc4">4</div>
+            <div>
+              <div class="sim-row-text">Identity anchored on-chain</div>
+              <div class="sim-row-detail" id="wc4d">waiting...</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="w-result" style="display:none; margin-bottom: 1rem;">
+          <div class="hash-block" id="w-addr"></div>
+          <div><span class="chain-badge"><span class="chain-dot"></span>Identity Anchored</span></div>
+        </div>
+
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+          <button class="sim-btn" id="w-start-btn" onclick="runWalletSim()">Simulate Connection</button>
+          <button class="sim-reset-btn" id="w-reset-btn" style="display:none;" onclick="resetWalletSim()">Reset</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="sig-grid">
+      <div class="sig-card">
+        <div class="sig-icon">⚡</div>
+        <div class="sig-title">Simple</div>
+        <div class="sig-desc">One click to connect. No registration forms, no email verification, no waiting period.</div>
+      </div>
+      <div class="sig-card">
+        <div class="sig-icon">🔒</div>
+        <div class="sig-title">Secure</div>
+        <div class="sig-desc">Cryptographic identity  -  impossible to impersonate without the holder's private key.</div>
+      </div>
+      <div class="sig-card">
+        <div class="sig-icon">🌐</div>
+        <div class="sig-title">Universal</div>
+        <div class="sig-desc">The same wallet works across every institution using ChainGrade  -  no separate accounts.</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────
+       STAGE 02  -  Distributed State (IPFS Upload)
+  ───────────────────────────────────────────────────────────────── -->
+  <section class="hiw-stage" id="distributed">
+
+    <p class="stage-label">Stage 02</p>
+    <h2>Upload your project.<br>Lock its fingerprint to the chain.</h2>
+
+    <p class="plain-explain">
+      When you submit a file, ChainGrade generates a unique fingerprint of it and records that fingerprint on the blockchain. The actual file lives on IPFS  -  a global distributed storage network  -  so there's no single server that can lose or delete it. Even changing one character in your file produces a completely different fingerprint, so any tampering is detectable on the spot.
+    </p>
+
+    <p class="technical-note">
+      IPFS assigns every file a <strong>content-addressed CID</strong>  -  the hash of the file's raw bytes. That CID is what gets written on-chain via a <code>recordProject()</code> smart contract call on Polygon Amoy. The ledger holds the proof; IPFS holds the payload. Neither depends on a central server staying online or cooperative.
+    </p>
+
+    <!-- Upload Simulation -->
+    <div class="mockup">
+      <div class="mockup-titlebar">
+        <div class="tb-dot" style="background:#ef4444;"></div>
+        <div class="tb-dot" style="background:#f59e0b;"></div>
+        <div class="tb-dot" style="background:#10b981;"></div>
+        <span class="tb-label">IPFS Upload &amp; On-Chain Record  -  Simulation</span>
+      </div>
+      <div class="mockup-body">
+
+        <div class="upload-zone" id="u-drop" onclick="runUploadSim()" title="Click to simulate upload">
+          <div style="font-size: 1.75rem; margin-bottom: 0.4rem;">📄</div>
+          <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);">my_research_paper.pdf</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px;">Click to simulate the upload pipeline</div>
+        </div>
+
+        <div class="sim-steps" id="u-steps" style="display:none;">
+          <div class="sim-row">
+            <div class="sim-check" id="uc1">1</div>
+            <div style="flex:1;">
+              <div class="sim-row-text">Staging file to IPFS nodes</div>
+              <div class="sim-progress-bar"><div class="sim-progress-fill" id="u-fill"></div></div>
+              <div class="sim-row-detail" id="uc1d">waiting...</div>
+            </div>
+          </div>
+          <div class="sim-row">
+            <div class="sim-check" id="uc2">2</div>
+            <div>
+              <div class="sim-row-text">Content hash (CID) generated</div>
+              <div class="sim-row-detail" id="uc2d">waiting...</div>
+            </div>
+          </div>
+          <div class="sim-row">
+            <div class="sim-check" id="uc3">3</div>
+            <div>
+              <div class="sim-row-text">AI originality score computed</div>
+              <div class="sim-row-detail" id="uc3d">waiting...</div>
+            </div>
+          </div>
+          <div class="sim-row">
+            <div class="sim-check" id="uc4">4</div>
+            <div>
+              <div class="sim-row-text">On-chain record written to Polygon</div>
+              <div class="sim-row-detail" id="uc4d">waiting...</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="u-result" style="display:none; margin-bottom: 0.75rem;">
+          <div class="hash-block">IPFS CID: QmX4Y9Z3f1a2b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8</div>
+          <div style="margin-top: 0.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+            <span class="chain-badge"><span class="chain-dot"></span>Recorded On-Chain</span>
+            <span style="font-size:0.78rem; color: var(--text-muted);">AI Score: 87% · CS · 2025</span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+          <button class="sim-btn" id="u-start-btn" onclick="runUploadSim()">Run Simulation</button>
+          <button class="sim-reset-btn" id="u-reset-btn" style="display:none;" onclick="resetUploadSim()">Reset</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="sig-grid">
+      <div class="sig-card">
+        <div class="sig-icon">🔏</div>
+        <div class="sig-title">Tamper-proof</div>
+        <div class="sig-desc">A single changed character produces a completely different hash. File forgery is caught instantly.</div>
+      </div>
+      <div class="sig-card">
+        <div class="sig-icon">🌍</div>
+        <div class="sig-title">Distributed</div>
+        <div class="sig-desc">IPFS stores files across multiple nodes. No central server can delete or lose your work.</div>
+      </div>
+      <div class="sig-card">
+        <div class="sig-icon">🤖</div>
+        <div class="sig-title">AI-screened</div>
+        <div class="sig-desc">Every submission receives an originality score before appearing in the public discovery feed.</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────────────
+       STAGE 03  -  Cross-Approval Consensus
+  ───────────────────────────────────────────────────────────────── -->
+  <section class="hiw-stage" id="approval">
+
+    <p class="stage-label">Stage 03</p>
+    <h2>Faculty review.<br>On-chain approval trail.</h2>
+
+    <p class="plain-explain">
+      Verification isn't a rubber stamp from one person. Faculty reviewers each sign off using their own wallet, and every signature is stored on-chain separately. You set the threshold  -  2-of-3, 3-of-5, any combination. Once the threshold is met, the record is permanently marked as verified. The full approval history is public: who signed, when, and exactly what they signed.
+    </p>
+
+    <p class="technical-note">
+      Faculty hold <strong>Soul-Bound Tokens (SBTs)</strong>  -  non-transferable credentials issued by the contract admin that authorise their approval signature. The smart contract records each approver's wallet address, block timestamp, and the exact content hash they approved. Revocations are separate on-chain events with their own audit trail  -  nothing is silently edited.
+    </p>
+
+    <!-- Approval Simulation -->
+    <div class="mockup">
+      <div class="mockup-titlebar">
+        <div class="tb-dot" style="background:#ef4444;"></div>
+        <div class="tb-dot" style="background:#f59e0b;"></div>
+        <div class="tb-dot" style="background:#10b981;"></div>
+        <span class="tb-label">Multi-Party Approval  -  Simulation</span>
+      </div>
+      <div class="mockup-body">
+
+        <div class="record-preview">
+          <div class="record-header">
+            <div>
+              <div class="record-filename">my_research_paper.pdf</div>
+              <div class="record-meta">by 0x3f2a...91bc &nbsp;·&nbsp; Computer Science &nbsp;·&nbsp; AI Score: 87%</div>
+            </div>
+            <span id="a-badge" class="badge neutral">Awaiting Review</span>
+          </div>
+          <div class="record-hash">IPFS: QmX4Y9Z3f1a2b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8</div>
+        </div>
+
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.5rem;">Faculty panel  -  threshold: <strong>2 of 3</strong> signatures required. Click each reviewer to approve.</p>
+
+        <div class="reviewer-grid">
+          <div class="reviewer-card" id="rv1" onclick="approveReviewer(1)">
+            <div class="reviewer-avatar">👩‍🏫</div>
+            <div class="reviewer-name">Dr. Okonkwo</div>
+            <div class="reviewer-status" id="rv1s">Click to approve</div>
+          </div>
+          <div class="reviewer-card" id="rv2" onclick="approveReviewer(2)">
+            <div class="reviewer-avatar">👨‍🔬</div>
+            <div class="reviewer-name">Prof. Mensah</div>
+            <div class="reviewer-status" id="rv2s">Click to approve</div>
+          </div>
+          <div class="reviewer-card" id="rv3" onclick="approveReviewer(3)">
+            <div class="reviewer-avatar">👩‍💻</div>
+            <div class="reviewer-name">Dr. Kamau</div>
+            <div class="reviewer-status" id="rv3s">Click to approve</div>
+          </div>
+        </div>
+
+        <div class="approval-tally">
+          <span id="a-count">0 / 3 approvals</span> &nbsp;·&nbsp; threshold: 2
+        </div>
+
+        <div class="approval-success" id="a-success">
+          <div class="icon">✅</div>
+          <div class="title">Threshold met. Record verified on-chain.</div>
+          <div class="detail" id="a-tx">tx: 0x1a2b...9f8e · Polygon Amoy · signatures recorded</div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+          <button class="sim-reset-btn" onclick="resetApprovalSim()">Reset simulation</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="sig-grid">
+      <div class="sig-card">
+        <div class="sig-icon">🏛️</div>
+        <div class="sig-title">Decentralised</div>
+        <div class="sig-desc">No single reviewer decides the outcome. The threshold logic lives in the smart contract  -  not in anyone's inbox.</div>
+      </div>
+      <div class="sig-card">
+        <div class="sig-icon">📋</div>
+        <div class="sig-title">Auditable</div>
+        <div class="sig-desc">Every approval is a public on-chain event. Anyone can verify who signed, when, and exactly what content hash they approved.</div>
+      </div>
+      <div class="sig-card">
+        <div class="sig-icon">♾️</div>
+        <div class="sig-title">Permanent</div>
+        <div class="sig-desc">Verified credentials remain valid even if the issuing institution dissolves. The ledger is the source of truth.</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- CTA -->
+  <section style="max-width: 760px; margin: 0 auto; padding: 3rem 1.5rem 5rem; text-align: center;">
+    <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.75rem;">Ready to anchor your work?</h2>
+    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.75;">
+      Connect a wallet and make your first permanent submission in under two minutes.
+    </p>
+    <a href="index.html">
+      <button class="primary-btn" style="width: auto; padding: 12px 32px;">Go to ChainGrade</button>
+    </a>
+  </section>
+
+  <script src="toast.js"></script>
+  <script>
+    // ── Scroll to anchor ───────────────────────────────────────────
+    window.addEventListener('load', function () {
+      if (window.location.hash) {
+        var el = document.querySelector(window.location.hash);
+        if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
+      }
+    });
+
+    // ── Stage 1  -  Wallet Simulation ────────────────────────────────
+    var wRunning = false;
+
+    function runWalletSim() {
+      if (wRunning) return;
+      wRunning = true;
+      document.getElementById('w-start-btn').disabled = true;
+      document.getElementById('w-steps').style.display = 'block';
+      document.getElementById('w-intro').style.display = 'none';
+
+      var steps = [
+        { id: 'wc1', detail: 'MetaMask detected', delay: 700 },
+        { id: 'wc2', detail: '0xa3f2b91c...d4e5f6a7  (public address retrieved)', delay: 900 },
+        { id: 'wc3', detail: 'Chain ID 0x13882  -  Polygon Amoy Testnet ✓', delay: 900 },
+        { id: 'wc4', detail: 'tx: 0x8a7f...3c1d · block #12847291 · identity anchored', delay: 1200 }
+      ];
+      var scanning = [
+        'Scanning for injected provider...',
+        'Calling eth_requestAccounts...',
+        'Checking eth_chainId...',
+        'Writing identity anchor to contract storage...'
+      ];
+
+      var t = 0;
+      steps.forEach(function (s, i) {
+        var el = document.getElementById(s.id);
+        var det = document.getElementById(s.id + 'd');
+        setTimeout(function () {
+          el.classList.add('active');
+          det.textContent = scanning[i];
+        }, t);
+        t += s.delay;
+        (function (el, det, detail, total) {
+          setTimeout(function () {
+            el.classList.remove('active');
+            el.classList.add('done');
+            el.textContent = '✓';
+            det.textContent = detail;
+            if (i === steps.length - 1) {
+              document.getElementById('w-addr').textContent =
+                'Identity: 0xa3f2b91cd45e8f0123456789  |  Chain: Polygon Amoy  |  Status: ANCHORED';
+              document.getElementById('w-result').style.display = 'block';
+              document.getElementById('w-icon').textContent = '🔓';
+              document.getElementById('w-reset-btn').style.display = 'inline-block';
+            }
+          }, total);
+        })(el, det, s.detail, t);
+        t += 0;
+      });
+    }
+
+    function resetWalletSim() {
+      wRunning = false;
+      [1, 2, 3, 4].forEach(function (n) {
+        var el = document.getElementById('wc' + n);
+        el.className = 'sim-check';
+        el.textContent = String(n);
+        document.getElementById('wc' + n + 'd').textContent = 'waiting...';
+      });
+      document.getElementById('w-steps').style.display = 'none';
+      document.getElementById('w-result').style.display = 'none';
+      document.getElementById('w-intro').style.display = 'block';
+      document.getElementById('w-icon').textContent = '🔐';
+      document.getElementById('w-reset-btn').style.display = 'none';
+      document.getElementById('w-start-btn').disabled = false;
+    }
+
+    // ── Stage 2  -  Upload Simulation ────────────────────────────────
+    var uRunning = false;
+
+    function runUploadSim() {
+      if (uRunning) return;
+      uRunning = true;
+      document.getElementById('u-start-btn').disabled = true;
+      document.getElementById('u-drop').style.cursor = 'default';
+      document.getElementById('u-steps').style.display = 'block';
+
+      var uc1 = document.getElementById('uc1');
+      var uc1d = document.getElementById('uc1d');
+      var fill = document.getElementById('u-fill');
+
+      uc1.classList.add('active');
+      uc1d.textContent = 'Uploading to IPFS nodes...';
+
+      var pct = 0;
+      var iv = setInterval(function () {
+        pct += 3;
+        if (pct > 100) pct = 100;
+        fill.style.width = pct + '%';
+        if (pct >= 100) {
+          clearInterval(iv);
+          uc1.classList.remove('active');
+          uc1.classList.add('done');
+          uc1.textContent = '✓';
+          uc1d.textContent = 'Pinned to 2 nodes (FRA1, NYC1)';
+
+          setTimeout(function () {
+            var uc2 = document.getElementById('uc2');
+            var uc2d = document.getElementById('uc2d');
+            uc2.classList.add('active');
+            uc2d.textContent = 'Computing SHA-256 content hash...';
+            setTimeout(function () {
+              uc2.classList.remove('active');
+              uc2.classList.add('done');
+              uc2.textContent = '✓';
+              uc2d.textContent = 'QmX4Y9Z3f1a2b8c9d0e1f2a3b4c5d6e7f8a1b2c3d4e5f6a7b8';
+
+              setTimeout(function () {
+                var uc3 = document.getElementById('uc3');
+                var uc3d = document.getElementById('uc3d');
+                uc3.classList.add('active');
+                uc3d.textContent = 'Running originality analysis...';
+                setTimeout(function () {
+                  uc3.classList.remove('active');
+                  uc3.classList.add('done');
+                  uc3.textContent = '✓';
+                  uc3d.textContent = 'Originality score: 87%  -  passes threshold (≥50%)';
+
+                  setTimeout(function () {
+                    var uc4 = document.getElementById('uc4');
+                    var uc4d = document.getElementById('uc4d');
+                    uc4.classList.add('active');
+                    uc4d.textContent = 'Calling recordProject() on contract...';
+                    setTimeout(function () {
+                      uc4.classList.remove('active');
+                      uc4.classList.add('done');
+                      uc4.textContent = '✓';
+                      uc4d.textContent = 'tx: 0x5d9c...7a2f mined · block #12851003';
+
+                      document.getElementById('u-result').style.display = 'block';
+                      document.getElementById('u-reset-btn').style.display = 'inline-block';
+                    }, 1300);
+                  }, 700);
+                }, 1100);
+              }, 700);
+            }, 900);
+          }, 400);
+        }
+      }, 30);
+    }
+
+    function resetUploadSim() {
+      uRunning = false;
+      [1, 2, 3, 4].forEach(function (n) {
+        var el = document.getElementById('uc' + n);
+        el.className = 'sim-check';
+        el.textContent = String(n);
+        document.getElementById('uc' + n + 'd').textContent = 'waiting...';
+      });
+      document.getElementById('u-fill').style.width = '0%';
+      document.getElementById('u-steps').style.display = 'none';
+      document.getElementById('u-result').style.display = 'none';
+      document.getElementById('u-drop').style.cursor = 'pointer';
+      document.getElementById('u-reset-btn').style.display = 'none';
+      document.getElementById('u-start-btn').disabled = false;
+    }
+
+    // ── Stage 3  -  Approval Simulation ─────────────────────────────
+    var aVotes = [false, false, false];
+    var aThreshold = 2;
+    var aDone = false;
+
+    function approveReviewer(n) {
+      if (aDone || aVotes[n - 1]) return;
+      aVotes[n - 1] = true;
+
+      var card = document.getElementById('rv' + n);
+      var status = document.getElementById('rv' + n + 's');
+
+      card.classList.add('approved');
+      card.onclick = null;
+
+      var d = new Date();
+      status.textContent = '✓ Signed ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+
+      var count = aVotes.filter(Boolean).length;
+      document.getElementById('a-count').textContent = count + ' / 3 approvals';
+
+      if (count >= aThreshold) {
+        aDone = true;
+        var badge = document.getElementById('a-badge');
+        badge.className = 'badge success';
+        badge.textContent = 'Verified';
+        var success = document.getElementById('a-success');
+        success.style.display = 'block';
+        document.getElementById('a-tx').textContent =
+          'tx: 0x1a2b...9f8e · block #12851047 · ' + count + ' signatures recorded on-chain';
+      }
+    }
+
+    function resetApprovalSim() {
+      aVotes = [false, false, false];
+      aDone = false;
+      [1, 2, 3].forEach(function (n) {
+        var card = document.getElementById('rv' + n);
+        card.classList.remove('approved');
+        card.onclick = function () { approveReviewer(n); };
+        document.getElementById('rv' + n + 's').textContent = 'Click to approve';
+      });
+      document.getElementById('a-count').textContent = '0 / 3 approvals';
+      document.getElementById('a-success').style.display = 'none';
+      var badge = document.getElementById('a-badge');
+      badge.className = 'badge neutral';
+      badge.textContent = 'Awaiting Review';
+    }
+  </script>
+
+</body>
+</html>
