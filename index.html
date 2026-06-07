@@ -96,12 +96,79 @@
     }
     .footer-note span { font-size: 0.8rem; color: var(--text-muted); }
     .footer-note a { font-size: 0.8rem; color: var(--accent-blue); text-decoration: none; font-weight: 600; }
+
+    /* Profile onboarding modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.7); z-index: 5000;
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-content {
+      background: var(--surface); border-radius: 12px; max-width: 520px; width: 100%;
+      padding: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,0.12); position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 1rem; right: 1rem; background: none; border: none;
+      font-size: 1.5rem; cursor: pointer; color: var(--text-muted);
+    }
+    .profile-form-group {
+      margin-bottom: 1.25rem;
+    }
+    .profile-form-group label {
+      display: block; font-size: 0.875rem; font-weight: 700; color: var(--text-muted);
+      margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .profile-form-group input,
+    .profile-form-group select {
+      width: 100%; padding: 0.75rem 0.875rem; border: 1px solid var(--border-color);
+      border-radius: 6px; font-size: 0.9rem; background: var(--background);
+      color: var(--text-main); font-family: inherit;
+    }
+    .profile-form-group input:focus,
+    .profile-form-group select:focus {
+      outline: 2px solid var(--accent-blue); outline-offset: 2px;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Toast container (injected by toast.js) -->
+  <!-- Toast container -->
   <div id="toast-container"></div>
+
+  <!-- Profile Onboarding Modal -->
+  <div class="modal-overlay hidden" id="profile-modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeProfileModal()">&times;</button>
+      <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.25rem; color: var(--text-main);">
+        Complete Your Profile
+      </h2>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.65;">
+        This information is associated with your blockchain submissions and helps institutions verify your credentials.
+      </p>
+
+      <form id="profile-form" onsubmit="saveProfile(event)">
+        <div class="profile-form-group">
+          <label for="prof-full-name">Full Name *</label>
+          <input type="text" id="prof-full-name" required placeholder="Your full name" />
+        </div>
+
+        <div class="profile-form-group">
+          <label for="prof-institution">Institution / University *</label>
+          <input type="text" id="prof-institution" required placeholder="e.g., University of Lagos" />
+        </div>
+
+        <div class="profile-form-group">
+          <label for="prof-course">Primary Course / Field of Study *</label>
+          <select id="prof-course" data-discipline-select="profile" required></select>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.75rem;">
+          <button type="submit" class="primary-btn" style="width: auto; flex: 1;">Continue</button>
+          <button type="button" class="outline-btn" style="width: auto; flex: 1;" onclick="skipProfileSetup()">Skip for now</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Navbar -->
   <nav class="navbar">
@@ -117,7 +184,7 @@
     <h1 class="system-name">ChainGrade</h1>
     <p class="tagline">Immutable academic records. AI-screened, faculty-signed, blockchain-anchored.</p>
     <p class="summary">
-      Submit your project once and receive a permanent on-chain record. Employers, institutions, and reviewers can verify it instantly through cryptographic proof: no university call required, no waiting period, no central authority to fail.
+      Submit your project once and receive a permanent on-chain record. Employers, institutions, and reviewers can verify it instantly through cryptographic proof: no university call required, no waiting period.
     </p>
     <div class="cta-row">
       <button class="primary-btn" style="width: auto; padding: 12px 28px;" onclick="document.getElementById('wallet-section').scrollIntoView({behavior:'smooth'})">Connect and Begin</button>
@@ -132,10 +199,10 @@
     <p class="section-eyebrow">The problem</p>
     <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.9rem;">Credentials expire. Records shouldn't.</h2>
     <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.85; margin-bottom: 0.9rem;">
-      Academic records are only as reliable as the institution holding them. If a university closes, loses accreditation, or simply does not respond to a verification request, your credential becomes unverifiable overnight. That is a structural flaw in the current system, not an edge case.
+      Academic records are only as reliable as the institution holding them. If a university closes, loses accreditation, or simply does not respond to a verification request, your credential becomes worthless.
     </p>
     <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.85;">
-      ChainGrade writes each submission to a public blockchain. The record is cryptographically tied to the submitter's wallet, not to any issuing institution. It persists permanently, and any party with the on-chain transaction reference can verify it independently.
+      ChainGrade writes each submission to a public blockchain. The record is cryptographically tied to the submitter's wallet, not to any issuing institution. It persists permanently, and any party with the content hash can verify its authenticity independently.
     </p>
   </div>
 
@@ -197,10 +264,10 @@
       <div class="step-number">&#x2B16;</div>
       <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0.5rem 0 0.5rem;">Ready? Connect your wallet to begin.</h2>
       <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.75; margin-bottom: 1.25rem; max-width: 540px;">
-        ChainGrade runs on Polygon Amoy (testnet). You'll need MetaMask or any compatible wallet extension. Your public address becomes your identity  -  no sign-up required.
+        ChainGrade runs on Polygon Amoy (testnet). You'll need MetaMask or any compatible wallet extension. Your public address becomes your identity — no sign-up required.
       </p>
 
-      <!-- Inline status banner  -  replaces alert() -->
+      <!-- Inline status banner -->
       <div id="wallet-status-banner" class="inline-status info" role="status" aria-live="polite"></div>
 
       <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
@@ -225,9 +292,11 @@
   </div>
 
   <script src="toast.js"></script>
+  <script src="disciplines.js"></script>
   <script>
     var LS_WALLET_KEY  = 'chaingr_wallet_address';
     var LS_NETWORK_KEY = 'chaingr_network_ok';
+    var LS_PROFILE_KEY = 'chaingr_user_profile';
 
     var POLYGON_AMOY = {
       chainId: '0x13882',
@@ -237,7 +306,6 @@
       blockExplorerUrls: ['https://amoy.polygonscan.com/']
     };
 
-    // ── Inline banner (non-blocking, replaces alert) ─────────────
     function setBanner(msg, type) {
       var el = document.getElementById('wallet-status-banner');
       if (!el) return;
@@ -262,6 +330,31 @@
       }
     }
 
+    function closeProfileModal() {
+      document.getElementById('profile-modal').classList.add('hidden');
+    }
+
+    function skipProfileSetup() {
+      closeProfileModal();
+      localStorage.setItem('userWallet', localStorage.getItem(LS_WALLET_KEY));
+      setTimeout(function () { window.location.href = 'dashboard.html'; }, 600);
+    }
+
+    function saveProfile(event) {
+      event.preventDefault();
+      var profile = {
+        fullName: document.getElementById('prof-full-name').value.trim(),
+        institution: document.getElementById('prof-institution').value.trim(),
+        course: document.getElementById('prof-course').value,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(profile));
+      toast('Profile Saved', 'Your profile has been securely saved.', 'success', 2000);
+      closeProfileModal();
+      localStorage.setItem('userWallet', localStorage.getItem(LS_WALLET_KEY));
+      setTimeout(function () { window.location.href = 'dashboard.html'; }, 1200);
+    }
+
     async function connectWalletOnboarding() {
       if (typeof window.ethereum === 'undefined') {
         setBanner('No wallet extension found. Install MetaMask to continue.', 'error');
@@ -277,7 +370,6 @@
         }
         var address = accounts[0];
         localStorage.setItem(LS_WALLET_KEY, address);
-        localStorage.setItem('userWallet', address);
         updateConnectBtn(address);
 
         var chainId = await window.ethereum.request({ method: 'eth_chainId' });
@@ -289,9 +381,17 @@
         } else {
           localStorage.setItem(LS_NETWORK_KEY, '1');
           showNetworkBtn(false);
-          setBanner('Connected and on Polygon Amoy. Entering dashboard...', 'success');
-          toast('Connected!', 'Wallet linked to Polygon Amoy. Redirecting...', 'success', 2000);
-          setTimeout(function () { window.location.href = 'dashboard.html'; }, 900);
+
+          var existingProfile = localStorage.getItem(LS_PROFILE_KEY);
+          if (!existingProfile) {
+            document.getElementById('profile-modal').classList.remove('hidden');
+            setBanner('Profile setup required. Complete your information to proceed.', 'info');
+          } else {
+            setBanner('Connected and on Polygon Amoy. Entering dashboard...', 'success');
+            localStorage.setItem('userWallet', address);
+            toast('Connected!', 'Wallet linked to Polygon Amoy. Redirecting...', 'success', 2000);
+            setTimeout(function () { window.location.href = 'dashboard.html'; }, 900);
+          }
         }
       } catch (err) {
         setBanner('Error: ' + (err.message || err), 'error');
@@ -311,9 +411,16 @@
         });
         localStorage.setItem(LS_NETWORK_KEY, '1');
         showNetworkBtn(false);
-        setBanner('Switched to Polygon Amoy. Entering dashboard...', 'success');
-        toast('Network Switched', 'Now on Polygon Amoy. Entering dashboard...', 'success', 2000);
-        setTimeout(function () { window.location.href = 'dashboard.html'; }, 600);
+
+        var existingProfile = localStorage.getItem(LS_PROFILE_KEY);
+        if (!existingProfile) {
+          document.getElementById('profile-modal').classList.remove('hidden');
+          setBanner('Profile setup required.', 'info');
+        } else {
+          setBanner('Switched to Polygon Amoy. Entering dashboard...', 'success');
+          toast('Network Switched', 'Now on Polygon Amoy. Entering dashboard...', 'success', 2000);
+          setTimeout(function () { window.location.href = 'dashboard.html'; }, 600);
+        }
       } catch (switchErr) {
         if (switchErr.code === 4902) {
           try {
@@ -342,13 +449,12 @@
       var networkOk     = localStorage.getItem(LS_NETWORK_KEY) === '1';
       var didLogout     = localStorage.getItem('userLogoutIntent') === 'true';
 
-      // Clear the logout flag now that we've read it
       if (didLogout) {
         localStorage.removeItem('userLogoutIntent');
-        // User intentionally disconnected  -  clear stale session keys and stay on landing
         localStorage.removeItem(LS_WALLET_KEY);
         localStorage.removeItem(LS_NETWORK_KEY);
         localStorage.removeItem('userWallet');
+        localStorage.removeItem(LS_PROFILE_KEY);
         updateConnectBtn(null);
         showNetworkBtn(false);
         setBanner('Wallet disconnected. Connect again when you are ready.', 'info');
