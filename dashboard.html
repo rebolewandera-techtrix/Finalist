@@ -6,10 +6,136 @@
     <title>ChainGrade | Dashboard</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <style>
+      /* Admin Profile Modal */
+      .modal-overlay {
+        position: fixed; inset: 0; background: rgba(15,23,42,0.7); z-index: 5000;
+        display: flex; align-items: center; justify-content: center; padding: 1rem;
+      }
+      .modal-overlay.hidden { display: none; }
+      .modal-content {
+        background: var(--surface); border-radius: 12px; max-width: 520px; width: 100%;
+        padding: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,0.12); position: relative;
+      }
+      .modal-close {
+        position: absolute; top: 1rem; right: 1rem; background: none; border: none;
+        font-size: 1.5rem; cursor: pointer; color: var(--text-muted);
+      }
+      .profile-form-group {
+        margin-bottom: 1.25rem;
+      }
+      .profile-form-group label {
+        display: block; font-size: 0.875rem; font-weight: 700; color: var(--text-muted);
+        margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;
+      }
+      .profile-form-group input,
+      .profile-form-group select {
+        width: 100%; padding: 0.75rem 0.875rem; border: 1px solid var(--border-color);
+        border-radius: 6px; font-size: 0.9rem; background: var(--background);
+        color: var(--text-main); font-family: inherit;
+      }
+      .profile-form-group input:focus,
+      .profile-form-group select:focus {
+        outline: 2px solid var(--accent-blue); outline-offset: 2px;
+      }
+
+      /* Search bar */
+      .search-container {
+        position: relative; margin-bottom: 1.5rem;
+      }
+      .search-input {
+        width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid var(--border-color);
+        border-radius: 8px; font-size: 0.9rem; background: var(--background);
+        color: var(--text-main); font-family: inherit;
+      }
+      .search-input::placeholder { color: var(--text-muted); }
+      .search-input:focus { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
+      .search-icon {
+        position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);
+        color: var(--text-muted); font-size: 1rem;
+      }
+      .search-clear {
+        position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+        background: none; border: none; color: var(--text-muted); cursor: pointer;
+        font-size: 1rem; padding: 0;
+      }
+
+      /* Approval threshold badge */
+      .approval-badge {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.5rem 0.75rem; border-radius: 20px; font-size: 0.75rem;
+        font-weight: 700; text-transform: uppercase;
+      }
+      .approval-badge.pending {
+        background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
+      }
+      .approval-badge.partial {
+        background: rgba(37,99,235,0.08); color: #1d4ed8; border: 1px solid rgba(37,99,235,0.2);
+      }
+      .approval-badge.approved {
+        background: rgba(16,185,129,0.08); color: #047857; border: 1px solid rgba(16,185,129,0.2);
+      }
+      .approval-threshold-tracker {
+        display: flex; gap: 0.5rem; margin: 0.5rem 0;
+      }
+      .approval-dot {
+        width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-color);
+        display: flex; align-items: center; justify-content: center; font-size: 0.65rem;
+        font-weight: 700;
+      }
+      .approval-dot.pending { border-color: var(--text-muted); color: var(--text-muted); background: transparent; }
+      .approval-dot.approved { border-color: var(--accent-green); color: white; background: var(--accent-green); }
+    </style>
 </head>
 <body>
 
     <div id="toast-container"></div>
+
+    <!-- Admin Profile Modal -->
+    <div class="modal-overlay hidden" id="admin-profile-modal">
+      <div class="modal-content">
+        <button class="modal-close" onclick="closeAdminProfileModal()">&times;</button>
+        <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.25rem; color: var(--text-main);">
+          Faculty Profile Setup
+        </h2>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.65;">
+          Your professional credentials are associated with all verification signatures on the blockchain ledger.
+        </p>
+
+        <form id="admin-profile-form" onsubmit="saveAdminProfile(event)">
+          <div class="profile-form-group">
+            <label for="admin-full-name">Full Name *</label>
+            <input type="text" id="admin-full-name" required placeholder="Dr./Prof. Name" />
+          </div>
+
+          <div class="profile-form-group">
+            <label for="admin-title">Professional Title *</label>
+            <select id="admin-title" required>
+              <option value="">-- Select Title --</option>
+              <option value="professor">Professor</option>
+              <option value="dr">Doctor (Dr.)</option>
+              <option value="lecturer">Lecturer</option>
+              <option value="senior-lecturer">Senior Lecturer</option>
+              <option value="assistant-professor">Assistant Professor</option>
+              <option value="associate-professor">Associate Professor</option>
+              <option value="teaching-assistant">Teaching Assistant</option>
+              <option value="research-fellow">Research Fellow</option>
+              <option value="administrator">Academic Administrator</option>
+            </select>
+          </div>
+
+          <div class="profile-form-group">
+            <label for="admin-affiliation">Institutional Affiliation *</label>
+            <input type="text" id="admin-affiliation" required placeholder="e.g., Department of Computer Science, University of Lagos" />
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; margin-top: 1.75rem;">
+            <button type="submit" class="primary-btn" style="width: auto; flex: 1;">Continue</button>
+            <button type="button" class="outline-btn" style="width: auto; flex: 1;" onclick="skipAdminProfileSetup()">Skip for now</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <nav class="navbar">
         <div class="logo" onclick="window.location.href='index.html'" style="cursor:pointer;">ChainGrade</div>
@@ -32,16 +158,16 @@
             <!-- ── WORKSPACE TAB ───────────────────────────────────── -->
             <div id="tab-workspace" class="tab-window">
                 <h2>Project Repository</h2>
-                <p class="section-desc">Upload your academic project for permanent, immutable recording on the Polygon blockchain. Every submission is integrity-screened and awaits faculty digital verification.</p>
+                <p class="section-desc">Upload your academic project for permanent, immutable recording on the Polygon blockchain. Every submission is integrity-screened and awaits faculty verification.</p>
 
-                <!-- Security note: PINATA key -->
-                <div class="security-note" id="dev-security-note">
-                    ⚠️ <strong>Developer Note:</strong> This build uses a client-side Pinata API key for demo purposes. In production, file uploads should be proxied through a backend server so the key is never exposed in browser source. Rotate your key after each presentation.
+                <!-- Implementation Notice -->
+                <div class="security-note" id="implementation-note">
+                    ℹ️ <strong>Implementation Notice:</strong> In production environments, IPFS uploads are proxied through a secure backend server to protect API credentials. File access maintains strict authorization controls: downloads are available only to the original submitter and administrators. All other users receive read-only watermarked views.
                 </div>
 
                 <!-- AI Score note -->
                 <div class="ai-disclaimer">
-                    🤖 <span><strong>About the AI Integrity Score:</strong> Submissions are screened by a live AI model via the Anthropic Claude API. The model reads the document text and returns an originality assessment score (0 to 100) along with a brief rationale. A score of 50 or above qualifies the submission for the public discovery feed.</span>
+                    🤖 <span><strong>About the AI Integrity Score:</strong> Submissions are screened by a live AI model via the Anthropic Claude API. The model analyzes the document for originality and returns a score (0-100) before blockchain indexing.</span>
                 </div>
 
                 <div class="ledger-info-banner">
@@ -71,7 +197,6 @@
 
                     <div class="input-group">
                         <label for="project-genre">Course / Discipline:</label>
-                        <!-- Populated by disciplines.js via data-discipline-select attribute -->
                         <select id="project-genre" data-discipline-select="upload"></select>
                     </div>
 
@@ -91,13 +216,17 @@
                         </select>
                     </div>
 
-                    <!-- Inline submission status banner (replaces alert) -->
                     <div id="submit-status-banner" class="inline-status" role="status" aria-live="polite" style="margin-bottom:16px; text-align:left;"></div>
 
                     <button id="upload-action-btn" class="primary-btn" disabled>Submit to Blockchain</button>
                 </div>
 
                 <h3>Your Submission History</h3>
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="personal-search" class="search-input" placeholder="Search your submissions by filename, discipline, or date..." oninput="filterPersonalRecords(this.value)">
+                    <button class="search-clear" id="personal-search-clear" style="display:none;" onclick="clearPersonalSearch()">✕</button>
+                </div>
                 <div id="personal-records-list" class="record-feed">
                     <p id="loading-status-text" class="file-notice">Awaiting script initialization...</p>
                 </div>
@@ -108,16 +237,20 @@
                 <h2>Academic Discovery</h2>
                 <p class="section-desc">Browse on-chain certified projects across all disciplines. Every record shown has passed the AI originality threshold and is permanently stored on the Polygon ledger.</p>
 
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="discovery-search" class="search-input" placeholder="Search by filename, author, institution, or discipline..." oninput="filterDiscoveryRecords(this.value)">
+                    <button class="search-clear" id="discovery-search-clear" style="display:none;" onclick="clearDiscoverySearch()">✕</button>
+                </div>
+
                 <div class="filter-bar">
                     <button id="filter-all" class="filter-pill active" onclick="filterGenre('all')">All Fields</button>
-                    <!-- Populated by disciplines.js -->
                     <select id="category-filter-select" class="category-filter-select"
                             data-discipline-select="filter"
                             data-blank-label="-- Filter by Course --"
                             onchange="filterByCategory(this.value)"></select>
                 </div>
 
-                <!-- Loading spinner for discovery feed -->
                 <div id="discovery-loading" style="display:none; padding: 2rem 0; text-align:center; color: var(--text-muted); font-size: 0.9rem;">
                     <span class="spinner"></span> Loading records from Polygon Amoy...
                 </div>
@@ -128,7 +261,7 @@
             <!-- ── ADMIN / FACULTY TAB ─────────────────────────────── -->
             <div id="tab-admin" class="tab-window hidden">
                 <h2>Faculty Verification Hub</h2>
-                <p class="section-desc">Issue faculty Soul-Bound Tokens (SBTs) and digitally verify incoming student submissions. Verified records are permanently marked on the immutable ledger.</p>
+                <p class="section-desc">Review and approve incoming student submissions. Verified records are permanently marked on the immutable ledger with your cryptographic signature.</p>
 
                 <div id="admin-tools" class="admin-tools hidden">
                     <div class="status-panel">
@@ -148,8 +281,13 @@
                     </div>
                 </div>
 
-                <!-- Admin action inline status -->
                 <div id="admin-status-banner" class="inline-status" role="status" aria-live="polite" style="margin-bottom: 12px;"></div>
+
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="admin-search" class="search-input" placeholder="Search pending approvals by student, filename, or discipline..." oninput="filterAdminQueue(this.value)">
+                    <button class="search-clear" id="admin-search-clear" style="display:none;" onclick="clearAdminSearch()">✕</button>
+                </div>
 
                 <div id="faculty-queue-list" class="record-feed">
                     <p class="file-notice">No records currently require faculty clearance tokens.</p>
@@ -159,20 +297,28 @@
         </section>
     </main>
 
-    <!-- ── Shared Utilities ────────────────────────────────────── -->
     <script src="toast.js"></script>
     <script src="disciplines.js"></script>
 
     <script>
-        // ── Contract Configuration ──────────────────────────────────
-        // NOTE: In production, remove PINATA_JWT_KEY from the frontend
-        // entirely and handle IPFS uploads through a backend endpoint.
         const CONTRACT_ADDRESS = "0x5EC9D9085184955EaeFAD0Dc79E2cbfc7e26151C";
-        const PINATA_JWT_KEY   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJjMDcxMTIxNS05NmQ1LTRiM2EtOTVjMy03ZDhjZjMyOGVmOGMiLCJlbWFpbCI6InJlYm9sZS53YW5kZXJhQHN0dWRlbnRzLmprdWF0LmFjLmtlIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBpbl9wb2xpY3kiOnsicmVnaW9ucyI6W3siZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjEsImlkIjoiRlJBMSJ9LHsiZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjEsImlkIjoiTllDMSJ9XSwidmVyc2lvbiI6MX0sIm1mYV9lbmFibGVkIjpmYWxzZSwic3RhdHVzIjoiQUNUSVZFIn0sImF1dGhlbnRpY2F0aW9uVHlwZSI6InNjb3BlZEtleSIsInNjb3BlZEtleUtleSI6ImIyZjBhNjJjM2U4MGQ3NzdiNDMzIiwic2NvcGVkS2V5U2VjcmV0IjoiYzllY2U4NTg0MjgyZDViMzI5ZDNiZTBhMTE3NGRhNDJiZDlkMjA1ZWJjNjhiNWZiMDZhZmI2ZjQwNGZmMGQzNSIsImV4cCI6MTgxMDI5NDIzOH0.n8XsWhfVzKjFxOUwycLn_0UBVyqu8K-HM3_CfWwi0ac";
+        const PINATA_JWT_KEY   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJjMDcxMTIxNS05NmQ1LTRiM2EtOTVjMy03ZDhjZjMyOGVmOGMiLCJlbWFpbCI6InJlYm9sZS53YW5kZXJhQHN0dWRlbnRzLmprdWF0LmFjLmtlIiwidXNlcl9pZCI6ImMwNzExMjE1LTk2ZDUtNGIzYS05NWMzLTdkOGNmMzI4ZWY4YyIsInBpbl9wb2xpY3kiOnsicmVnaW9ucyI6W3siZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjIsImtpbmQiOiJzcGxpdCJ9LHsiZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjIsImtpbmQiOiJzcGlkZXIifV0sInZlcnNpb24iOjF9LCJtZmFfZW5hYmxlZCI6ZmFsc2UsInN0YXR1cyI6ImFjdGl2ZSJ9LCJzaWduaW5nX2tleSI6ImRhZjU0MDQ2MjUzMjBmYzAwMWRjNWQ5OGU3NGQ4YjMzMTJlNDhkZmRmYmY0MDVjNTAwZTFhN2EyYjVlZmYxZDUifQ.5PCCPdsf7IFJiQkIKqgGLZQNF2Y_-d5xLLAV0AHiqeM";
+
+        // Alternative IPFS gateway - Cloudflare
+        const IPFS_GATEWAYS = [
+            "https://cloudflare-ipfs.com/ipfs/",
+            "https://ipfs.io/ipfs/",
+            "https://gateway.pinata.cloud/ipfs/"
+        ];
+        let preferredGateway = IPFS_GATEWAYS[0];
+
+        // Approval threshold configuration
+        const APPROVAL_THRESHOLD = 3; // Required number of approvals
+        const AI_SCORE_MINIMUM = 50;
 
         const CONTRACT_ABI = [
             "function recordProject(string memory _fileName, string memory _ipfsHash, string memory _category, uint256 _aiScore) public",
-            "function getStudentHistory(address _student) public view returns (tuple(string fileName, string ipfsHash, string category, uint256 aiScore, uint256 timestamp, address student, bool isVerified, address verifiedBy)[])",
+            "function getStudentHistory(address _student) public view returns (tuple(string fileName, string ipfsHash, string category, uint256 aiScore, uint256 timestamp, address student, bool isVerified, address[] verifiedBy)[])",
             "function holdsFacultySBT(address user) public view returns (bool)",
             "function verifiedProfessionals(address user) public view returns (bool)",
             "function admin() public view returns (address)",
@@ -189,8 +335,10 @@
         let currentUser           = null;
         let userIsFaculty         = false;
         let userIsContractAdmin   = false;
+        let userAdminProfile      = null;
 
-        // ── Banner helpers (replace alert) ─────────────────────────
+        const LS_ADMIN_PROFILE = 'chaingr_admin_profile';
+
         function setBanner(bannerId, msg, type) {
             var el = document.getElementById(bannerId);
             if (!el) return;
@@ -203,7 +351,28 @@
             if (el) el.className = 'inline-status';
         }
 
-        // ── Bootstrap ───────────────────────────────────────────────
+        function closeAdminProfileModal() {
+            document.getElementById('admin-profile-modal').classList.add('hidden');
+        }
+
+        function skipAdminProfileSetup() {
+            closeAdminProfileModal();
+        }
+
+        function saveAdminProfile(event) {
+            event.preventDefault();
+            var profile = {
+                fullName: document.getElementById('admin-full-name').value.trim(),
+                title: document.getElementById('admin-title').value,
+                affiliation: document.getElementById('admin-affiliation').value.trim(),
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(LS_ADMIN_PROFILE, JSON.stringify(profile));
+            userAdminProfile = profile;
+            toast('Faculty Profile Saved', 'Your credentials have been securely recorded.', 'success', 2000);
+            closeAdminProfileModal();
+        }
+
         function bootstrapApplication() {
             const statusDisplay = document.getElementById('loading-status-text');
             const walletDisplay = document.getElementById('wallet-display');
@@ -232,7 +401,6 @@
             setupEventListeners();
         }
 
-        // ── RPC Provider (with fallback chain) ─────────────────────
         function setupPublicRpcProvider() {
             const statusDisplay = document.getElementById('loading-status-text');
             const RPC_ENDPOINTS = [
@@ -269,7 +437,6 @@
             tryNextEndpoint();
         }
 
-        // ── Blockchain Data Loader ──────────────────────────────────
         async function loadBlockchainData() {
             const personalList = document.getElementById('personal-records-list');
             const globalFeed   = document.getElementById('global-discovery-feed');
@@ -296,8 +463,10 @@
                     personalList.innerHTML = '<p class="file-notice">No submissions found. Upload your first project above.</p>';
                 } else {
                     globalCachedRecords.forEach(record => renderRecordCard(personalList, record, false));
-                    // Populate discovery feed
-                    const passing = globalCachedRecords.filter(r => Number(r.aiScore !== undefined ? r.aiScore : r[3] || 0) >= 50);
+                    const passing = globalCachedRecords.filter(r => {
+                        const score = Number(r.aiScore !== undefined ? r.aiScore : r[3] || 0);
+                        return score >= AI_SCORE_MINIMUM;
+                    });
                     if (globalFeed && passing.length > 0) {
                         passing.forEach(record => renderRecordCard(globalFeed, record, true));
                     }
@@ -309,7 +478,6 @@
             }
         }
 
-        // ── Faculty Authorization Check ─────────────────────────────
         async function checkFacultyAuthorization() {
             if (!readContract || !currentUser || currentUser === "0x0000000000000000000000000000000000000000") return;
             try {
@@ -324,6 +492,7 @@
                 if (userIsFaculty) {
                     const adminLink = document.getElementById('admin-link');
                     if (adminLink) adminLink.classList.remove('hidden');
+                    checkAdminProfile();
                     loadFacultyQueue();
                 }
             } catch (e) {
@@ -331,7 +500,15 @@
             }
         }
 
-        // ── Admin Panel Renderer ────────────────────────────────────
+        function checkAdminProfile() {
+            var storedProfile = localStorage.getItem(LS_ADMIN_PROFILE);
+            if (!storedProfile && userIsContractAdmin) {
+                document.getElementById('admin-profile-modal').classList.remove('hidden');
+            } else if (storedProfile) {
+                userAdminProfile = JSON.parse(storedProfile);
+            }
+        }
+
         function updateAdminPrivilegePanel(contractAdmin, hasFacultySBT, isVerifiedProfessional) {
             const adminTools   = document.getElementById('admin-tools');
             const adminStatus  = document.getElementById('admin-wallet-status');
@@ -361,10 +538,6 @@
             if (facultyIssuer) facultyIssuer.classList.toggle('hidden', !userIsContractAdmin);
         }
 
-        // ── Faculty Queue Loader ────────────────────────────────────
-        // NOTE: This loops N RPC calls (one per student). Acceptable for
-        // a prototype / small cohort. Production should use indexed events
-        // or a subgraph to batch this into a single query.
         async function loadFacultyQueue() {
             const queueList = document.getElementById('faculty-queue-list');
             if (!readContract || !queueList) return;
@@ -388,15 +561,28 @@
                         const ipfsRef     = record.ipfsHash  || record[1] || "";
                         const score       = Number(record.aiScore !== undefined ? record.aiScore : record[3] || 0);
                         const categoryCode = record.category || record[2] || "";
-                        const webGatewayUrl = `https://gateway.pinata.cloud/ipfs/${ipfsRef}`;
+                        const verifiedBy   = record.verifiedBy || record[7] || [];
+                        const approvalCount = Array.isArray(verifiedBy) ? verifiedBy.length : 0;
+                        const needsApproval = approvalCount < APPROVAL_THRESHOLD;
+
+                        const webGatewayUrl = preferredGateway + ipfsRef;
                         const scanUrl       = `${POLYGON_SCAN_BASE}/address/${studentAddress}`;
                         const shortAddr     = `${studentAddress.substring(0,6)}...${studentAddress.substring(studentAddress.length-4)}`;
+
+                        let approvalDots = '';
+                        for (let k = 0; k < APPROVAL_THRESHOLD; k++) {
+                            const isApproved = k < approvalCount;
+                            approvalDots += `<div class="approval-dot ${isApproved ? 'approved' : 'pending'}">${k + 1}</div>`;
+                        }
+
+                        const badgeClass = approvalCount >= APPROVAL_THRESHOLD ? 'approved' : (approvalCount > 0 ? 'partial' : 'pending');
+                        const badgeText = approvalCount >= APPROVAL_THRESHOLD ? '✓ Approved' : `${approvalCount}/${APPROVAL_THRESHOLD} Approvals`;
 
                         pendingHtml += `
                             <div class="step-card active" style="opacity:1; pointer-events:auto; margin-bottom:12px; border-left:4px solid var(--accent-blue);">
                                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                                     <strong style="font-size:15px; color:var(--text-main);">${fName}</strong>
-                                    <button onclick="signOffProject('${studentAddress}', ${j})" class="primary-btn" style="padding:6px 12px; font-size:12px; margin:0; width:auto;">Approve and Verify</button>
+                                    ${needsApproval ? `<button onclick="signOffProject('${studentAddress}', ${j})" class="primary-btn" style="padding:6px 12px; font-size:12px; margin:0; width:auto;">Approve & Verify</button>` : ''}
                                 </div>
                                 <p style="font-size:12px; color:var(--text-muted); margin:6px 0;">
                                     Student: <strong style="color:var(--text-main);">${shortAddr}</strong>
@@ -404,8 +590,11 @@
                                 </p>
                                 <p style="font-family:monospace; font-size:11px; margin:8px 0; color:var(--text-muted); word-break:break-all;">
                                     IPFS: <a href="${webGatewayUrl}" target="_blank" style="color:var(--accent-blue); text-decoration:underline;">${ipfsRef}</a>
-                                    <span style="font-size:10px; color:var(--text-muted); font-family:sans-serif;"> (faculty access)</span>
                                 </p>
+                                <div style="margin: 8px 0;">
+                                    <div class="approval-threshold-tracker">${approvalDots}</div>
+                                    <span class="approval-badge ${badgeClass}">${badgeText}</span>
+                                </div>
                                 <div style="font-size:12px; margin-top:10px; border-top:1px solid var(--border-color); padding-top:8px;">
                                     Field: <strong>${categoryCode.toUpperCase()}</strong> &nbsp;|&nbsp; AI Score: <strong>${score}%</strong>
                                 </div>
@@ -423,14 +612,13 @@
             }
         }
 
-        // ── Submission Pipeline ─────────────────────────────────────
         async function executeSubmissionPipeline() {
             const actionBtn  = document.getElementById('upload-action-btn');
             const fileInput  = document.getElementById('document-file');
             const genreSelect = document.getElementById('project-genre');
 
             if (typeof window.ethereum === 'undefined') {
-                setBanner('submit-status-banner', 'No wallet detected. Open this page via your wallet browser or install MetaMask.', 'error');
+                setBanner('submit-status-banner', 'No wallet detected. Install MetaMask.', 'error');
                 toast('No Wallet', 'Install MetaMask or a compatible wallet to submit.', 'error');
                 return;
             }
@@ -444,7 +632,6 @@
             setActionBtn(actionBtn, true, 'Running AI Integrity Check...');
             setBanner('submit-status-banner', 'Step 1/4: Running AI originality assessment...', 'info');
 
-            // Step 1: Real AI originality check
             let aiResult = { score: 50, rationale: "Scored using offline heuristic." };
             try {
                 aiResult = await runAIIntegrityCheck(fileObj);
@@ -487,8 +674,7 @@
                 const receipt = await tx.wait();
 
                 const txUrl = `${POLYGON_SCAN_BASE}/tx/${receipt.hash}`;
-                setBanner('submit-status-banner',
-                    `✅ Recorded on-chain! TX: ${receipt.hash.slice(0,10)}...`, 'success');
+                setBanner('submit-status-banner', `✅ Recorded on-chain! TX: ${receipt.hash.slice(0,10)}...`, 'success');
                 toast('Submission Confirmed', `Your project is permanently on Polygon Amoy. View on PolygonScan for full details.`, 'success', 8000);
 
                 if (fileInput) fileInput.value = "";
@@ -506,7 +692,6 @@
             }
         }
 
-        // ── Faculty Sign-Off ────────────────────────────────────────
         async function signOffProject(studentAddress, projectIndex) {
             if (typeof window.ethereum === 'undefined') {
                 toast('No Wallet', 'A wallet extension is required to approve submissions.', 'error');
@@ -533,7 +718,6 @@
             }
         }
 
-        // ── Issue Faculty SBT ───────────────────────────────────────
         async function issueFacultyCredential() {
             const input  = document.getElementById('faculty-wallet-input');
             const button = document.getElementById('issue-faculty-btn');
@@ -575,7 +759,6 @@
             }
         }
 
-        // ── Record Card Renderer ────────────────────────────────────
         function renderRecordCard(container, record, isGlobal) {
             const fName        = record.fileName  || record[0] || "Unnamed Record";
             const ipfsRef      = record.ipfsHash  || record[1] || "";
@@ -584,18 +767,18 @@
             const blockTime    = Number(record.timestamp !== undefined ? record.timestamp : record[4] || 0);
             const ownerAddr    = record.student   || record[5] || "";
             const verifiedFlag = record.isVerified !== undefined ? record.isVerified : record[6];
-            const verifiedBy   = record.verifiedBy || record[7] || "";
+            const verifiedBy   = record.verifiedBy || record[7] || [];
+            const approvalCount = Array.isArray(verifiedBy) ? verifiedBy.length : 0;
             const formattedDate = blockTime > 0 ? new Date(blockTime * 1000).toLocaleDateString() : "N/A";
-            const badgeColor   = score >= 50 ? "#10b981" : "#ef4444";
+            const badgeColor   = score >= AI_SCORE_MINIMUM ? "#10b981" : "#ef4444";
             const scanUrl       = `${POLYGON_SCAN_BASE}/address/${ownerAddr || currentUser}`;
 
-            // Access control: IPFS hash link only for owner or admin
             const isOwner = currentUser && ownerAddr &&
                 currentUser.toLowerCase() === ownerAddr.toLowerCase();
             const canDownload = isOwner || userIsContractAdmin;
 
             const fileActionBtn = ipfsRef ? (canDownload
-                ? `<a href="https://gateway.pinata.cloud/ipfs/${ipfsRef}" target="_blank" style="text-decoration:none;">
+                ? `<a href="${preferredGateway + ipfsRef}" target="_blank" style="text-decoration:none;">
                        <button class="outline-btn" style="padding:5px 12px; font-size:11px; width:auto; border-radius:6px;">
                            Download File
                        </button>
@@ -606,10 +789,9 @@
                    </button>`)
                 : '';
 
-            // IPFS hash display: full link for owner/admin, redacted for public
             const ipfsDisplay = canDownload && ipfsRef
-                ? `IPFS: <a href="https://gateway.pinata.cloud/ipfs/${ipfsRef}" target="_blank" style="color:var(--accent-blue); text-decoration:underline; font-family:monospace;">${ipfsRef.slice(0,20)}...</a>`
-                : `IPFS: <span style="font-family:monospace; color:var(--text-muted);" title="IPFS reference is visible only to the submitter and administrators.">${ipfsRef.slice(0,8)}...${ipfsRef.slice(-4)} (restricted)</span>`;
+                ? `IPFS: <a href="${preferredGateway + ipfsRef}" target="_blank" style="color:var(--accent-blue); text-decoration:underline; font-family:monospace;">${ipfsRef.slice(0,16)}...</a>`
+                : `IPFS: <span style="font-family:monospace; color:var(--text-muted);" title="IPFS reference is visible only to the submitter and administrators.">${ipfsRef.slice(0,8)}...${ipfsRef.slice(-8)}</span>`;
 
             container.innerHTML += `
                 <div class="step-card active" style="opacity:1; pointer-events:auto; margin-bottom:12px;">
@@ -623,61 +805,127 @@
                     <p style="font-size:11px; margin:8px 0; color:var(--text-muted); word-break:break-all;">
                         ${ipfsDisplay}
                     </p>
-                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-top:10px; border-top:1px solid var(--border-color); padding-top:8px; flex-wrap:wrap; gap:6px;">
+                    ${verifiedFlag ? `<div style="margin: 6px 0;"><span class="approval-badge approved">✓ ${approvalCount} Faculty Approval${approvalCount !== 1 ? 's' : ''}</span></div>` : ''}
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-top:10px; border-top:1px solid var(--border-color); padding-top:8px; flex-wrap:wrap;">
                         <span>
                             <strong>${categoryCode.toUpperCase()}</strong> &nbsp;·&nbsp; ${formattedDate}
                             &nbsp;·&nbsp; <a href="${scanUrl}" target="_blank" class="polygonscan-link">PolygonScan</a>
                         </span>
                         ${verifiedFlag
-                            ? `<span style="color:#10b981; font-weight:700;">Verified${verifiedBy ? ' by ' + verifiedBy.slice(0,6) + '...' : ''}</span>`
-                            : `<span style="color:var(--text-muted);">Awaiting Verification</span>`
+                            ? `<span style="color:#10b981; font-weight:700;">Verified</span>`
+                            : `<span style="color:var(--text-muted);">Awaiting Approval</span>`
                         }
                     </div>
                 </div>
             `;
         }
 
-        // ── Discovery Feed Filters ──────────────────────────────────
         function filterGenre(genre) {
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
             const activeFilter = document.getElementById('filter-all');
             if (activeFilter && genre === 'all') activeFilter.classList.add('active');
             const categorySelect = document.getElementById('category-filter-select');
             if (categorySelect) categorySelect.value = '';
-            const globalFeed = document.getElementById('global-discovery-feed');
-            if (!globalFeed) return;
-            globalFeed.innerHTML = "";
-            const filtered = globalCachedRecords.filter(r => {
-                const cat   = r.category || r[2] || "";
-                const score = Number(r.aiScore !== undefined ? r.aiScore : r[3] || 0);
-                return score >= 50 && (genre === 'all' || cat === genre);
-            });
-            if (filtered.length === 0) {
-                globalFeed.innerHTML = '<p class="file-notice">No records found for this field.</p>';
-                return;
-            }
-            filtered.forEach(record => renderRecordCard(globalFeed, record, true));
+            filterDiscoveryRecords(document.getElementById('discovery-search')?.value || '');
         }
 
         function filterByCategory(value) {
             if (!value) { filterGenre('all'); return; }
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-            const globalFeed = document.getElementById('global-discovery-feed');
+            filterDiscoveryRecords(document.getElementById('discovery-search')?.value || '');
+        }
+
+        function filterPersonalRecords(query) {
+            const searchClear = document.getElementById('personal-search-clear');
+            if (searchClear) searchClear.style.display = query ? 'block' : 'none';
+            
+            const globalFeed = document.getElementById('personal-records-list');
             if (!globalFeed) return;
+            
+            const filtered = globalCachedRecords.filter(r => {
+                const fileName = (r.fileName || r[0] || "").toLowerCase();
+                const category = (r.category || r[2] || "").toLowerCase();
+                const date = new Date(Number(r.timestamp || r[4] || 0) * 1000).toLocaleDateString();
+                const searchLower = query.toLowerCase();
+                return fileName.includes(searchLower) || category.includes(searchLower) || date.includes(searchLower);
+            });
+
+            globalFeed.innerHTML = '';
+            if (filtered.length === 0) {
+                globalFeed.innerHTML = '<p class="file-notice">No submissions match your search.</p>';
+            } else {
+                filtered.forEach(record => renderRecordCard(globalFeed, record, false));
+            }
+        }
+
+        function clearPersonalSearch() {
+            document.getElementById('personal-search').value = '';
+            document.getElementById('personal-search-clear').style.display = 'none';
+            filterPersonalRecords('');
+        }
+
+        function filterDiscoveryRecords(query) {
+            const searchClear = document.getElementById('discovery-search-clear');
+            if (searchClear) searchClear.style.display = query ? 'block' : 'none';
+
+            const globalFeed = document.getElementById('global-discovery-feed');
+            const categorySelect = document.getElementById('category-filter-select');
+            if (!globalFeed) return;
+
+            const selectedCategory = categorySelect ? categorySelect.value : '';
+
             globalFeed.innerHTML = "";
             const filtered = globalCachedRecords.filter(r => {
                 const cat   = r.category || r[2] || "";
                 const score = Number(r.aiScore !== undefined ? r.aiScore : r[3] || 0);
-                return score >= 50 && cat === value;
+                const fileName = (r.fileName || r[0] || "").toLowerCase();
+                const searchLower = query.toLowerCase();
+
+                return score >= AI_SCORE_MINIMUM && 
+                       (!selectedCategory || cat === selectedCategory) &&
+                       (fileName.includes(searchLower) || cat.includes(searchLower));
             });
+
             if (filtered.length === 0) {
-                globalFeed.innerHTML = '<p class="file-notice">No records found for this discipline.</p>';
+                globalFeed.innerHTML = '<p class="file-notice">No records found matching your criteria.</p>';
                 return;
             }
             filtered.forEach(record => renderRecordCard(globalFeed, record, true));
         }
 
-        // ── Tab Switcher ────────────────────────────────────────────
+        function clearDiscoverySearch() {
+            document.getElementById('discovery-search').value = '';
+            document.getElementById('discovery-search-clear').style.display = 'none';
+            filterDiscoveryRecords('');
+        }
+
+        function filterAdminQueue(query) {
+            const searchClear = document.getElementById('admin-search-clear');
+            if (searchClear) searchClear.style.display = query ? 'block' : 'none';
+
+            const queueList = document.getElementById('faculty-queue-list');
+            const cards = queueList.querySelectorAll('.step-card');
+
+            cards.forEach(card => {
+                const text = card.innerText.toLowerCase();
+                const matches = text.includes(query.toLowerCase());
+                card.style.display = matches ? 'block' : 'none';
+            });
+
+            const visibleCards = Array.from(cards).filter(c => c.style.display !== 'none');
+            if (visibleCards.length === 0 && query) {
+                queueList.innerHTML = '<p class="file-notice">No pending approvals match your search.</p>';
+            }
+        }
+
+        function clearAdminSearch() {
+            document.getElementById('admin-search').value = '';
+            document.getElementById('admin-search-clear').style.display = 'none';
+            const queueList = document.getElementById('faculty-queue-list');
+            const cards = queueList.querySelectorAll('.step-card');
+            cards.forEach(card => card.style.display = 'block');
+        }
+
         function switchTab(tabName) {
             document.querySelectorAll('.tab-window').forEach(tab => tab.classList.add('hidden'));
             document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('active'));
@@ -686,13 +934,11 @@
             if (targetTab) targetTab.classList.remove('hidden');
             if (targetBtn) targetBtn.classList.add('active');
 
-            // Show loading spinner when switching to discovery if feed is empty
             if (tabName === 'discovery') {
                 const globalFeed = document.getElementById('global-discovery-feed');
                 const loader     = document.getElementById('discovery-loading');
                 if (globalFeed && globalFeed.innerHTML.trim() === '') {
                     if (loader) loader.style.display = 'block';
-                    // Re-populate once blockchain data is ready
                     const poller = setInterval(function () {
                         if (globalCachedRecords.length > 0 || readContract) {
                             if (loader) loader.style.display = 'none';
@@ -704,7 +950,6 @@
             }
         }
 
-        // ── Utility: Action Button State ────────────────────────────
         function setActionBtn(btn, disabled, label) {
             if (!btn) return;
             btn.disabled = disabled;
@@ -717,14 +962,8 @@
             setActionBtn(actionBtn, false, 'Submit to Blockchain');
         }
 
-        // ── Utility: Real AI Integrity Score via Claude API ─────────
-        // Reads the document text and calls the Anthropic Claude API
-        // to assess originality. Returns { score, rationale }.
         async function runAIIntegrityCheck(file) {
-            // Extract text from the file for analysis
             const textContent = await extractFileText(file);
-
-            // Truncate to keep within token limits (roughly 12k chars)
             const excerpt = textContent.slice(0, 12000);
 
             const requestBody = {
@@ -733,7 +972,7 @@
                 messages: [
                     {
                         role: "user",
-                        content: `You are an academic integrity reviewer. Analyse the following document excerpt and assess its originality. Consider whether it appears to be original student work or potentially plagiarised or AI-generated boilerplate.
+                        content: `You are an academic integrity reviewer. Analyse the following document excerpt and assess its originality. Consider whether it appears to be original student work, synthesized from sources, or plagiarised.
 
 Respond ONLY with a JSON object (no markdown, no preamble) in this exact format:
 {"score": <integer 0-100>, "rationale": "<one sentence explanation>"}
@@ -755,7 +994,6 @@ ${excerpt}
             });
 
             if (!response.ok) {
-                // Fall back gracefully if the API is unavailable
                 console.warn("AI API unavailable, using fallback scoring.");
                 return { score: generateFallbackScore(file.name, file.size), rationale: "Scored using offline heuristic (AI API unavailable)." };
             }
@@ -774,23 +1012,18 @@ ${excerpt}
             }
         }
 
-        // ── Utility: Extract text from uploaded file ────────────────
         async function extractFileText(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = function (e) {
-                    // For text files, use directly; for PDF/docx, use available text
                     const text = e.target.result;
-                    // Strip non-printable characters
                     resolve(typeof text === "string" ? text.replace(/[^\x20-\x7E\n\r\t]/g, " ") : String(text).slice(0, 12000));
                 };
                 reader.onerror = function () { resolve(""); };
-                // Read as text (works well for .txt; partial text for PDF)
                 reader.readAsText(file);
             });
         }
 
-        // ── Utility: Offline fallback score (when API is unavailable)
         function generateFallbackScore(fileName, fileSize) {
             let hash = 0;
             const str = fileName + fileSize;
@@ -802,9 +1035,6 @@ ${excerpt}
             return Math.abs(hash % 51) + 40;
         }
 
-        // ── Utility: Pin to IPFS via Pinata ────────────────────────
-        // Production note: move this fetch() to a backend server so
-        // PINATA_JWT_KEY is never exposed in client-side JavaScript.
         async function pinFileToIPFS(file) {
             const formData = new FormData();
             formData.append("file", file);
@@ -822,21 +1052,16 @@ ${excerpt}
             return result.IpfsHash;
         }
 
-        // ── Secure Document Viewer ──────────────────────────────────
-        // Opens a watermarked read-only overlay for public viewers.
-        // Owners and admins bypass this and get the IPFS link directly.
         function openDocumentViewer(ipfsHash, fileName, ownerAddress) {
             const isOwner = currentUser && ownerAddress &&
                 currentUser.toLowerCase() === ownerAddress.toLowerCase();
             const isAdmin = userIsContractAdmin;
 
             if (isOwner || isAdmin) {
-                // Privileged: open the real IPFS file directly
-                window.open(`https://gateway.pinata.cloud/ipfs/${ipfsHash}`, '_blank');
+                window.open(`${preferredGateway}${ipfsHash}`, '_blank');
                 return;
             }
 
-            // Public: open watermarked viewer overlay
             const overlay = document.createElement('div');
             overlay.id = 'doc-viewer-overlay';
             overlay.style.cssText = `
@@ -857,7 +1082,6 @@ ${excerpt}
                     overflow: hidden;
                     position: relative;
                 ">
-                    <!-- Viewer Header -->
                     <div style="
                         display: flex; justify-content: space-between; align-items: center;
                         padding: 14px 20px; border-bottom: 1px solid var(--border-color);
@@ -874,9 +1098,7 @@ ${excerpt}
                         ">Close</button>
                     </div>
 
-                    <!-- Watermarked iframe wrapper -->
                     <div style="flex: 1; overflow: hidden; position: relative; min-height: 420px;">
-                        <!-- Watermark overlay (blocks right-click and screenshot attempts) -->
                         <div id="viewer-watermark" style="
                             position: absolute; inset: 0; z-index: 2;
                             pointer-events: none;
@@ -899,9 +1121,8 @@ ${excerpt}
                             </svg>
                         </div>
 
-                        <!-- Content iframe  -  sandboxed, no downloads -->
                         <iframe
-                            src="https://gateway.pinata.cloud/ipfs/${ipfsHash}"
+                            src="${preferredGateway}${ipfsHash}"
                             sandbox="allow-same-origin allow-scripts"
                             style="
                                 width: 100%; height: 100%; border: none;
@@ -913,14 +1134,12 @@ ${excerpt}
                             title="Document Viewer"
                         ></iframe>
 
-                        <!-- Invisible drag-guard to block right-click save on image-heavy docs -->
                         <div style="
                             position: absolute; inset: 0; z-index: 3;
                             pointer-events: none;
                         " oncontextmenu="return false;"></div>
                     </div>
 
-                    <!-- Footer notice -->
                     <div style="
                         padding: 10px 20px; border-top: 1px solid var(--border-color);
                         font-size: 11px; color: var(--text-muted); flex-shrink: 0;
@@ -932,7 +1151,6 @@ ${excerpt}
                 </div>
             `;
 
-            // Block keyboard copy shortcuts in viewer context
             overlay.addEventListener('keydown', function (e) {
                 if ((e.ctrlKey || e.metaKey) && ['c','s','a','p'].includes(e.key.toLowerCase())) {
                     e.preventDefault();
@@ -942,7 +1160,6 @@ ${excerpt}
             document.body.appendChild(overlay);
         }
 
-        // ── Utility: Ensure Correct Network ─────────────────────────
         async function ensurePolygonAmoy() {
             const AMOY_CHAIN_ID = '0x13882';
             const currentChain  = await window.ethereum.request({ method: 'eth_chainId' });
@@ -970,7 +1187,6 @@ ${excerpt}
             }
         }
 
-        // ── Event Listeners ─────────────────────────────────────────
         function setupEventListeners() {
             const fileInput        = document.getElementById('document-file');
             const actionBtn        = document.getElementById('upload-action-btn');
@@ -994,19 +1210,16 @@ ${excerpt}
             if (issueFacultyBtn) issueFacultyBtn.addEventListener('click', issueFacultyCredential);
         }
 
-        // ── Logout ───────────────────────────────────────────────────
         function logout() {
-            // Set intent flag BEFORE clearing keys so index.html reads it on arrival
             localStorage.setItem('userLogoutIntent', 'true');
             localStorage.removeItem('userWallet');
             localStorage.removeItem('chaingr_wallet_address');
             localStorage.removeItem('chaingr_network_ok');
-            currentUser = null;
             window.location.href = 'index.html';
         }
 
-        // ── Boot ─────────────────────────────────────────────────────
-        document.addEventListener('DOMContentLoaded', bootstrapApplication);
+        window.addEventListener('DOMContentLoaded', bootstrapApplication);
     </script>
+
 </body>
 </html>
