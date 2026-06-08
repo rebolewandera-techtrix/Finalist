@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainGrade | Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+</head>
+<body>
+
+    <div id="toast-container"></div>
+
+    <nav class="navbar">
+        <div class="logo" onclick="window.location.href='index.html'" style="cursor:pointer;">ChainGrade</div>
+        <div class="user-meta">
+            <span id="citation-badge" class="badge">0 Submissions</span>
+            <span id="wallet-display" class="wallet-pill">Initialising...</span>
+        </div>
+    </nav>
+
+    <main class="dashboard-grid">
+        <aside class="sidebar">
+            <button id="btn-workspace"  class="menu-item active" onclick="switchTab('workspace')">📁 My Workspace</button>
+            <button id="btn-discovery"  class="menu-item"        onclick="switchTab('discovery')">🔍 Explore Projects</button>
+            <button id="admin-link"     class="menu-item hidden"  onclick="switchTab('admin')">🛡️ Verification Panel</button>
+            <button class="menu-item logout" onclick="logout()">Disconnect</button>
+        </aside>
+
+        <section class="content-area">
+
+            <!-- ── WORKSPACE TAB ───────────────────────────────────── -->
+            <div id="tab-workspace" class="tab-window">
+                <h2>Project Repository</h2>
+                <p class="section-desc">Upload your academic project for permanent, immutable recording on the Polygon blockchain. Every submission is integrity-screened and awaits faculty digital verification.</p>
+
+                <!-- Security note: PINATA key -->
+                <div class="security-note" id="dev-security-note">
+                    ⚠️ <strong>Developer Note:</strong> This build uses a client-side Pinata API key for demo purposes. In production, file uploads should be proxied through a backend server so the key is never exposed in browser source. Rotate your key after each presentation.
+                </div>
+
+                <!-- AI Score disclaimer -->
+                <div class="ai-disclaimer">
+                    🤖 <span><strong>About the AI Integrity Score:</strong> This prototype uses a deterministic hash of filename + file size to simulate an originality score. A production build would integrate a real plagiarism API (e.g. Copyleaks or Turnitin). The score threshold of ≥50% controls public discovery feed visibility.</span>
+                </div>
+
+                <div class="ledger-info-banner">
+                    <div class="info-card">
+                        <span class="info-icon">🔗</span>
+                        <strong>Immutable Ledger</strong>
+                        <p>Once recorded on-chain, submissions cannot be altered or deleted — ever.</p>
+                    </div>
+                    <div class="info-card">
+                        <span class="info-icon">🤖</span>
+                        <strong>AI Integrity Screen</strong>
+                        <p>Each file receives an originality score before blockchain indexing.</p>
+                    </div>
+                    <div class="info-card">
+                        <span class="info-icon">✅</span>
+                        <strong>Faculty Verified</strong>
+                        <p>Faculty hold Soul-Bound Tokens to digitally approve and certify work.</p>
+                    </div>
+                </div>
+
+                <div class="upload-box">
+                    <label class="custom-file-input">
+                        <input type="file" id="document-file" accept=".pdf,.docx,.txt">
+                        <span>Choose PDF / Doc</span>
+                    </label>
+                    <p id="selected-file-name" class="file-notice">No file chosen</p>
+
+                    <div class="input-group">
+                        <label for="project-genre">Course / Discipline:</label>
+                        <!-- Populated by disciplines.js via data-discipline-select attribute -->
+                        <select id="project-genre" data-discipline-select="upload"></select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="cohort-year">Academic Cohort / Year Group:</label>
+                        <select id="cohort-year">
+                            <option value="2026">Class of 2026</option>
+                            <option value="2025" selected>Class of 2025</option>
+                            <option value="2024">Class of 2024</option>
+                            <option value="2023">Class of 2023</option>
+                            <option value="2022">Class of 2022</option>
+                            <option value="2021">Class of 2021</option>
+                            <option value="2020">Class of 2020</option>
+                            <option value="2019">Class of 2019</option>
+                            <option value="postgrad">Postgraduate / Masters</option>
+                            <option value="phd">Doctoral / PhD</option>
+                        </select>
+                    </div>
+
+                    <!-- Inline submission status banner (replaces alert) -->
+                    <div id="submit-status-banner" class="inline-status" role="status" aria-live="polite" style="margin-bottom:16px; text-align:left;"></div>
+
+                    <button id="upload-action-btn" class="primary-btn" disabled>Submit to Blockchain</button>
+                </div>
+
+                <h3>Your Submission History</h3>
+                <div id="personal-records-list" class="record-feed">
+                    <p id="loading-status-text" class="file-notice">Awaiting script initialization...</p>
+                </div>
+            </div>
+
+            <!-- ── DISCOVERY TAB ───────────────────────────────────── -->
+            <div id="tab-discovery" class="tab-window hidden">
+                <h2>Academic Discovery</h2>
+                <p class="section-desc">Browse on-chain certified projects across all disciplines. Every record shown has passed the AI originality threshold and is permanently stored on the Polygon ledger.</p>
+
+                <div class="filter-bar">
+                    <button id="filter-all" class="filter-pill active" onclick="filterGenre('all')">All Fields</button>
+                    <!-- Populated by disciplines.js -->
+                    <select id="category-filter-select" class="category-filter-select"
+                            data-discipline-select="filter"
+                            data-blank-label="-- Filter by Course --"
+                            onchange="filterByCategory(this.value)"></select>
+                </div>
+
+                <!-- Loading spinner for discovery feed -->
+                <div id="discovery-loading" style="display:none; padding: 2rem 0; text-align:center; color: var(--text-muted); font-size: 0.9rem;">
+                    <span class="spinner"></span> Loading records from Polygon Amoy…
+                </div>
+
+                <div id="global-discovery-feed" class="record-feed"></div>
+            </div>
+
+            <!-- ── ADMIN / FACULTY TAB ─────────────────────────────── -->
+            <div id="tab-admin" class="tab-window hidden">
+                <h2>Faculty Verification Hub</h2>
+                <p class="section-desc">Issue faculty Soul-Bound Tokens (SBTs) and digitally verify incoming student submissions. Verified records are permanently marked on the immutable ledger.</p>
+
+                <div id="admin-tools" class="admin-tools hidden">
+                    <div class="status-panel">
+                        <div>
+                            <span class="eyebrow">Admin Wallet</span>
+                            <p id="admin-wallet-status">Checking connected wallet privileges...</p>
+                        </div>
+                        <span id="faculty-status-badge" class="badge neutral">Checking</span>
+                    </div>
+                    <div id="faculty-issuer" class="issuer-panel hidden">
+                        <label for="faculty-wallet-input">Faculty wallet address</label>
+                        <div class="issuer-row">
+                            <input id="faculty-wallet-input" type="text" placeholder="0x…" autocomplete="off" spellcheck="false">
+                            <button id="issue-faculty-btn" class="primary-btn" type="button">Issue Faculty SBT</button>
+                        </div>
+                        <p class="file-notice">Only the wallet that deployed this contract can issue faculty credentials.</p>
+                    </div>
+                </div>
+
+                <!-- Admin action inline status -->
+                <div id="admin-status-banner" class="inline-status" role="status" aria-live="polite" style="margin-bottom: 12px;"></div>
+
+                <div id="faculty-queue-list" class="record-feed">
+                    <p class="file-notice">No records currently require faculty clearance tokens.</p>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- ── Shared Utilities ────────────────────────────────────── -->
+    <script src="toast.js"></script>
+    <script src="disciplines.js"></script>
+
+    <script>
+        // ── Contract Configuration ──────────────────────────────────
+        // NOTE: In production, remove PINATA_JWT_KEY from the frontend
+        // entirely and handle IPFS uploads through a backend endpoint.
+        const CONTRACT_ADDRESS = "0x5EC9D9085184955EaeFAD0Dc79E2cbfc7e26151C";
+        const PINATA_JWT_KEY   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJjMDcxMTIxNS05NmQ1LTRiM2EtOTVjMy03ZDhjZjMyOGVmOGMiLCJlbWFpbCI6InJlYm9sZS53YW5kZXJhQHN0dWRlbnRzLmprdWF0LmFjLmtlIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBpbl9wb2xpY3kiOnsicmVnaW9ucyI6W3siZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjEsImlkIjoiRlJBMSJ9LHsiZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjEsImlkIjoiTllDMSJ9XSwidmVyc2lvbiI6MX0sIm1mYV9lbmFibGVkIjpmYWxzZSwic3RhdHVzIjoiQUNUSVZFIn0sImF1dGhlbnRpY2F0aW9uVHlwZSI6InNjb3BlZEtleSIsInNjb3BlZEtleUtleSI6ImIyZjBhNjJjM2U4MGQ3NzdiNDMzIiwic2NvcGVkS2V5U2VjcmV0IjoiYzllY2U4NTg0MjgyZDViMzI5ZDNiZTBhMTE3NGRhNDJiZDlkMjA1ZWJjNjhiNWZiMDZhZmI2ZjQwNGZmMGQzNSIsImV4cCI6MTgxMDI5NDIzOH0.n8XsWhfVzKjFxOUwycLn_0UBVyqu8K-HM3_CfWwi0ac";
+
+        const CONTRACT_ABI = [
+            "function recordProject(string memory _fileName, string memory _ipfsHash, string memory _category, uint256 _aiScore) public",
+            "function getStudentHistory(address _student) public view returns (tuple(string fileName, string ipfsHash, string category, uint256 aiScore, uint256 timestamp, address student, bool isVerified, address verifiedBy)[])",
+            "function holdsFacultySBT(address user) public view returns (bool)",
+            "function verifiedProfessionals(address user) public view returns (bool)",
+            "function admin() public view returns (address)",
+            "function issueFacultySBT(address _professor) public",
+            "function getAllStudents() public view returns (address[] memory)",
+            "function verifyProject(address _student, uint256 _index) public"
+        ];
+
+        const POLYGON_SCAN_BASE = "https://amoy.polygonscan.com";
+
+        let readProvider          = null;
+        let readContract          = null;
+        let globalCachedRecords   = [];
+        let currentUser           = null;
+        let userIsFaculty         = false;
+        let userIsContractAdmin   = false;
+
+        // ── Banner helpers (replace alert) ─────────────────────────
+        function setBanner(bannerId, msg, type) {
+            var el = document.getElementById(bannerId);
+            if (!el) return;
+            el.textContent = msg;
+            el.className = 'inline-status visible ' + (type || 'info');
+        }
+
+        function clearBanner(bannerId) {
+            var el = document.getElementById(bannerId);
+            if (el) el.className = 'inline-status';
+        }
+
+        // ── Bootstrap ───────────────────────────────────────────────
+        function bootstrapApplication() {
+            const statusDisplay = document.getElementById('loading-status-text');
+            const walletDisplay = document.getElementById('wallet-display');
+
+            try {
+                let storedWallet = localStorage.getItem('userWallet');
+                if (storedWallet && storedWallet !== "null" && storedWallet !== "undefined" && storedWallet.startsWith("0x")) {
+                    currentUser = storedWallet;
+                    if (walletDisplay) walletDisplay.innerText = `${currentUser.substring(0, 6)}...${currentUser.substring(currentUser.length - 4)}`;
+                } else {
+                    currentUser = "0x0000000000000000000000000000000000000000";
+                    if (walletDisplay) {
+                        walletDisplay.innerText = "View-Only Mode";
+                        walletDisplay.style.background = "#4b5563";
+                        walletDisplay.style.color = "white";
+                    }
+                }
+
+                if (statusDisplay) statusDisplay.innerText = "Connecting to Polygon RPC Nodes...";
+                setupPublicRpcProvider();
+            } catch (bootError) {
+                console.error("Critical error during bootstrap:", bootError);
+                if (statusDisplay) statusDisplay.innerHTML = `<span style="color:#ef4444;">Initialization Error: ${bootError.message}</span>`;
+            }
+
+            setupEventListeners();
+        }
+
+        // ── RPC Provider (with fallback chain) ─────────────────────
+        function setupPublicRpcProvider() {
+            const statusDisplay = document.getElementById('loading-status-text');
+            const RPC_ENDPOINTS = [
+                "https://rpc-amoy.polygon.technology",
+                "https://polygon-amoy-bor-rpc.publicnode.com",
+                "https://rpc.ankr.com/polygon_amoy"
+            ];
+            let endpointIndex = 0;
+
+            function tryNextEndpoint() {
+                if (endpointIndex >= RPC_ENDPOINTS.length) {
+                    if (statusDisplay) statusDisplay.innerHTML = `<span style="color:#ef4444;">All Polygon Amoy RPC nodes unreachable. Check your connection.</span>`;
+                    toast('RPC Unreachable', 'Could not connect to any Polygon Amoy node. Check your internet connection.', 'error', 8000);
+                    return;
+                }
+                const endpoint = RPC_ENDPOINTS[endpointIndex++];
+                try {
+                    readProvider = new ethers.JsonRpcProvider(endpoint);
+                    readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+                    readProvider.getNetwork().then(() => {
+                        console.log("RPC connected:", endpoint);
+                        setTimeout(() => loadBlockchainData(), 50);
+                        setTimeout(() => checkFacultyAuthorization(), 100);
+                    }).catch(err => {
+                        console.warn("RPC unreachable, trying next:", endpoint, err.message);
+                        tryNextEndpoint();
+                    });
+                } catch (rpcError) {
+                    console.error("RPC config error:", rpcError);
+                    tryNextEndpoint();
+                }
+            }
+
+            tryNextEndpoint();
+        }
+
+        // ── Blockchain Data Loader ──────────────────────────────────
+        async function loadBlockchainData() {
+            const personalList = document.getElementById('personal-records-list');
+            const globalFeed   = document.getElementById('global-discovery-feed');
+            const badge        = document.getElementById('citation-badge');
+
+            if (!readContract || !personalList) return;
+
+            if (!currentUser || currentUser === "0x0000000000000000000000000000000000000000") {
+                personalList.innerHTML = `<p class="file-notice">Please connect your Web3 wallet to view your submissions.</p>`;
+                return;
+            }
+
+            try {
+                console.log("Fetching history for:", currentUser);
+                let onChainData = [];
+                try {
+                    const raw = await readContract.getStudentHistory(currentUser);
+                    onChainData = raw && typeof raw.toArray === "function" ? raw.toArray()
+                                : raw && typeof raw.length === "number"   ? Array.from(raw)
+                                : [];
+                } catch (e) { console.warn("History decode (empty wallet?):", e.message); }
+
+                personalList.innerHTML = "";
+                if (globalFeed) globalFeed.innerHTML = "";
+                globalCachedRecords = onChainData;
+
+                if (badge) badge.textContent = `${globalCachedRecords.length} Submission${globalCachedRecords.length !== 1 ? 's' : ''}`;
+
+                if (globalCachedRecords.length === 0) {
+                    personalList.innerHTML = '<p class="file-notice">No submissions found. Upload your first project above.</p>';
+                } else {
+                    globalCachedRecords.forEach(record => renderRecordCard(personalList, record, false));
+                    // Populate discovery feed
+                    const passing = globalCachedRecords.filter(r => Number(r.aiScore !== undefined ? r.aiScore : r[3] || 0) >= 50);
+                    if (globalFeed && passing.length > 0) {
+                        passing.forEach(record => renderRecordCard(globalFeed, record, true));
+                    }
+                }
+            } catch (err) {
+                console.error("Blockchain read error:", err);
+                if (personalList) personalList.innerHTML = `<p class="file-notice" style="color:#ef4444;">Failed to read from blockchain: ${err.message}</p>`;
+                toast('Read Error', 'Could not fetch your records from the blockchain.', 'error');
+            }
+        }
+
+        // ── Faculty Authorization Check ─────────────────────────────
+        async function checkFacultyAuthorization() {
+            if (!readContract || !currentUser || currentUser === "0x0000000000000000000000000000000000000000") return;
+            try {
+                const [hasFacultySBT, isVerifiedProfessional, contractAdmin] = await Promise.all([
+                    readContract.holdsFacultySBT(currentUser),
+                    readContract.verifiedProfessionals(currentUser),
+                    readContract.admin()
+                ]);
+                userIsContractAdmin = contractAdmin.toLowerCase() === currentUser.toLowerCase();
+                userIsFaculty       = Boolean(hasFacultySBT || isVerifiedProfessional || userIsContractAdmin);
+                updateAdminPrivilegePanel(contractAdmin, hasFacultySBT, isVerifiedProfessional);
+                if (userIsFaculty) {
+                    const adminLink = document.getElementById('admin-link');
+                    if (adminLink) adminLink.classList.remove('hidden');
+                    loadFacultyQueue();
+                }
+            } catch (e) {
+                console.warn("Faculty auth check failed:", e.message);
+            }
+        }
+
+        // ── Admin Panel Renderer ────────────────────────────────────
+        function updateAdminPrivilegePanel(contractAdmin, hasFacultySBT, isVerifiedProfessional) {
+            const adminTools   = document.getElementById('admin-tools');
+            const adminStatus  = document.getElementById('admin-wallet-status');
+            const facultyBadge = document.getElementById('faculty-status-badge');
+            const facultyIssuer = document.getElementById('faculty-issuer');
+
+            if (adminTools) adminTools.classList.remove('hidden');
+            if (adminStatus) {
+                const shortAdmin = `${contractAdmin.substring(0, 6)}...${contractAdmin.substring(contractAdmin.length - 4)}`;
+                adminStatus.innerText = userIsContractAdmin
+                    ? `Connected wallet controls this contract. Admin: ${shortAdmin}`
+                    : `Contract admin is ${shortAdmin}. Connect that wallet to issue faculty credentials.`;
+            }
+            if (facultyBadge) {
+                facultyBadge.classList.remove('neutral', 'success', 'warning');
+                if (userIsContractAdmin) {
+                    facultyBadge.innerText = 'Admin';
+                    facultyBadge.classList.add('success');
+                } else if (hasFacultySBT || isVerifiedProfessional) {
+                    facultyBadge.innerText = 'Faculty';
+                    facultyBadge.classList.add('success');
+                } else {
+                    facultyBadge.innerText = 'No Faculty SBT';
+                    facultyBadge.classList.add('warning');
+                }
+            }
+            if (facultyIssuer) facultyIssuer.classList.toggle('hidden', !userIsContractAdmin);
+        }
+
+        // ── Faculty Queue Loader ────────────────────────────────────
+        // NOTE: This loops N RPC calls (one per student). Acceptable for
+        // a prototype / small cohort. Production should use indexed events
+        // or a subgraph to batch this into a single query.
+        async function loadFacultyQueue() {
+            const queueList = document.getElementById('faculty-queue-list');
+            if (!readContract || !queueList) return;
+
+            queueList.innerHTML = `<p class="file-notice"><span class="spinner"></span> Scanning blockchain for pending approvals…</p>`;
+
+            function safeArr(r) {
+                if (!r) return [];
+                if (typeof r.toArray === "function") return r.toArray();
+                if (typeof r.length === "number") return Array.from(r);
+                return [];
+            }
+            try {
+                let allStudents = [];
+                try { allStudents = safeArr(await readContract.getAllStudents()); }
+                catch (e) { console.warn("getAllStudents decode:", e.message); }
+                let pendingHtml = "";
+
+                for (let i = 0; i < allStudents.length; i++) {
+                    const studentAddress = allStudents[i];
+                    let projects = [];
+                    try { projects = safeArr(await readContract.getStudentHistory(studentAddress)); }
+                    catch (e) { console.warn("getStudentHistory decode:", e.message); continue; }
+
+                    for (let j = 0; j < projects.length; j++) {
+                        const record     = projects[j];
+                        const isVerified = record.isVerified !== undefined ? record.isVerified : record[6];
+                        if (isVerified) continue;
+
+                        const fName       = record.fileName  || record[0] || "Unnamed file";
+                        const ipfsRef     = record.ipfsHash  || record[1] || "";
+                        const score       = Number(record.aiScore !== undefined ? record.aiScore : record[3] || 0);
+                        const categoryCode = record.category || record[2] || "";
+                        const webGatewayUrl = `https://gateway.pinata.cloud/ipfs/${ipfsRef}`;
+                        const scanUrl       = `${POLYGON_SCAN_BASE}/address/${studentAddress}`;
+                        const shortAddr     = `${studentAddress.substring(0,6)}...${studentAddress.substring(studentAddress.length-4)}`;
+
+                        pendingHtml += `
+                            <div class="step-card active" style="opacity:1; pointer-events:auto; margin-bottom:12px; border-left:4px solid var(--accent-blue);">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                    <strong style="font-size:15px; color:var(--text-main);">${fName}</strong>
+                                    <button onclick="signOffProject('${studentAddress}', ${j})" class="primary-btn" style="padding:6px 12px; font-size:12px; margin:0; width:auto;">Approve &amp; Verify</button>
+                                </div>
+                                <p style="font-size:12px; color:var(--text-muted); margin:6px 0;">
+                                    Student: <strong style="color:var(--text-main);">${shortAddr}</strong>
+                                    &nbsp;·&nbsp; <a href="${scanUrl}" target="_blank" class="polygonscan-link">View on PolygonScan ↗</a>
+                                </p>
+                                <p style="font-family:monospace; font-size:11px; margin:8px 0; color:var(--text-muted); word-break:break-all;">
+                                    IPFS: <a href="${webGatewayUrl}" target="_blank" style="color:var(--accent-blue); text-decoration:underline;">${ipfsRef}</a>
+                                </p>
+                                <div style="font-size:12px; margin-top:10px; border-top:1px solid var(--border-color); padding-top:8px;">
+                                    Field: <strong>${categoryCode.toUpperCase()}</strong> &nbsp;|&nbsp; AI Score: <strong>${score}%</strong>
+                                    <span style="font-size:10px; color:var(--text-muted);"> (simulated — see disclaimer)</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                queueList.innerHTML = pendingHtml || `<p class="file-notice">No files are currently awaiting verification.</p>`;
+
+            } catch (err) {
+                console.error("Faculty queue error:", err);
+                queueList.innerHTML = `<p class="file-notice" style="color:#ef4444;">Could not load verification queue: ${err.message}</p>`;
+                toast('Queue Error', 'Failed to load pending approvals from the blockchain.', 'error');
+            }
+        }
+
+        // ── Submission Pipeline ─────────────────────────────────────
+        async function executeSubmissionPipeline() {
+            const actionBtn  = document.getElementById('upload-action-btn');
+            const fileInput  = document.getElementById('document-file');
+            const genreSelect = document.getElementById('project-genre');
+
+            if (typeof window.ethereum === 'undefined') {
+                setBanner('submit-status-banner', 'No wallet detected. Open this page via your wallet browser or install MetaMask.', 'error');
+                toast('No Wallet', 'Install MetaMask or a compatible wallet to submit.', 'error');
+                return;
+            }
+
+            const fileObj = fileInput ? fileInput.files[0] : null;
+            if (!fileObj) return;
+
+            const cohortYear   = document.getElementById('cohort-year')?.value || '';
+            const recordedName = cohortYear ? `[${cohortYear}] ${fileObj.name}` : fileObj.name;
+            const computedAiScore = generateDeterministicScore(fileObj.name, fileObj.size);
+
+            setActionBtn(actionBtn, true, 'Uploading to IPFS…');
+            setBanner('submit-status-banner', 'Step 1/3 — Pinning file to IPFS nodes…', 'info');
+
+            let liveIpfsCid = "";
+            try {
+                liveIpfsCid = await pinFileToIPFS(fileObj);
+                setBanner('submit-status-banner', `Step 2/3 — IPFS pinned. CID: ${liveIpfsCid.slice(0,12)}… Waiting for wallet…`, 'info');
+            } catch (ipfsError) {
+                setBanner('submit-status-banner', 'IPFS upload failed: ' + ipfsError.message, 'error');
+                toast('IPFS Failed', ipfsError.message, 'error');
+                resetUploadButton();
+                return;
+            }
+
+            try {
+                setActionBtn(actionBtn, true, 'Switching to Polygon Amoy…');
+                await ensurePolygonAmoy();
+
+                setActionBtn(actionBtn, true, 'Waiting for wallet signature…');
+                setBanner('submit-status-banner', 'Step 3/3 — Confirm the transaction in your wallet…', 'info');
+
+                const writeProvider = new ethers.BrowserProvider(window.ethereum);
+                const writeSigner   = await writeProvider.getSigner();
+                const writeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, writeSigner);
+
+                const tx = await writeContract.recordProject(recordedName, liveIpfsCid, genreSelect ? genreSelect.value : "cs", computedAiScore);
+
+                setActionBtn(actionBtn, true, 'Mining on Polygon…');
+                setBanner('submit-status-banner', 'Transaction submitted. Waiting for block confirmation…', 'info');
+                const receipt = await tx.wait();
+
+                const txUrl = `${POLYGON_SCAN_BASE}/tx/${receipt.hash}`;
+                setBanner('submit-status-banner',
+                    `✅ Recorded on-chain! TX: ${receipt.hash.slice(0,10)}…`, 'success');
+                toast('Submission Confirmed', `Your project is permanently on Polygon Amoy. View on PolygonScan for full details.`, 'success', 8000);
+
+                if (fileInput) fileInput.value = "";
+                document.getElementById('selected-file-name').innerText = "No file chosen";
+                setBanner('submit-status-banner', '✅ Recorded on-chain! Loading your submission history…', 'success');
+                await new Promise(r => setTimeout(r, 3000));
+                await loadBlockchainData();
+                if (userIsFaculty) await loadFacultyQueue();
+
+            } catch (error) {
+                console.error("Submission pipeline error:", error);
+                const msg = error?.reason || error?.message || "Transaction rejected or failed.";
+                setBanner('submit-status-banner', 'Transaction failed: ' + msg, 'error');
+                toast('Transaction Failed', msg, 'error');
+            } finally {
+                resetUploadButton();
+            }
+        }
+
+        // ── Faculty Sign-Off ────────────────────────────────────────
+        async function signOffProject(studentAddress, projectIndex) {
+            if (typeof window.ethereum === 'undefined') {
+                toast('No Wallet', 'A wallet extension is required to approve submissions.', 'error');
+                return;
+            }
+            setBanner('admin-status-banner', 'Waiting for wallet signature…', 'info');
+            try {
+                await ensurePolygonAmoy();
+                const writeProvider = new ethers.BrowserProvider(window.ethereum);
+                const writeSigner   = await writeProvider.getSigner();
+                const writeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, writeSigner);
+                const tx = await writeContract.verifyProject(studentAddress, projectIndex);
+                setBanner('admin-status-banner', 'Transaction submitted. Mining…', 'info');
+                toast('Approval Submitted', 'Waiting for block confirmation…', 'info');
+                await tx.wait();
+                setBanner('admin-status-banner', '✅ Project verified on Polygon Amoy Ledger.', 'success');
+                toast('Verified!', 'The project has been permanently marked as faculty-verified.', 'success');
+                await loadFacultyQueue();
+            } catch (error) {
+                console.error("Faculty sign-off error:", error);
+                const msg = error?.reason || error?.message || "Transaction rejected.";
+                setBanner('admin-status-banner', 'Verification failed: ' + msg, 'error');
+                toast('Verification Failed', msg, 'error');
+            }
+        }
+
+        // ── Issue Faculty SBT ───────────────────────────────────────
+        async function issueFacultyCredential() {
+            const input  = document.getElementById('faculty-wallet-input');
+            const button = document.getElementById('issue-faculty-btn');
+            const targetAddress = input ? input.value.trim() : "";
+
+            if (!ethers.isAddress(targetAddress)) {
+                toast('Invalid Address', 'Enter a valid Ethereum wallet address (0x…).', 'warning');
+                return;
+            }
+            if (!userIsContractAdmin) {
+                toast('Not Authorised', 'Only the contract admin wallet can issue faculty credentials.', 'error');
+                return;
+            }
+            if (typeof window.ethereum === 'undefined') {
+                toast('No Wallet', 'A wallet extension is required.', 'error');
+                return;
+            }
+
+            try {
+                if (button) { button.disabled = true; button.innerText = "Waiting for Wallet…"; }
+                setBanner('admin-status-banner', 'Issuing faculty SBT — confirm in wallet…', 'info');
+                await ensurePolygonAmoy();
+                const writeProvider = new ethers.BrowserProvider(window.ethereum);
+                const writeSigner   = await writeProvider.getSigner();
+                const writeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, writeSigner);
+                const tx = await writeContract.issueFacultySBT(targetAddress);
+                if (button) button.innerText = "Mining Credential…";
+                await tx.wait();
+                setBanner('admin-status-banner', '✅ Faculty SBT issued successfully.', 'success');
+                toast('SBT Issued', `Faculty credential minted for ${targetAddress.slice(0,8)}…`, 'success');
+                if (input) input.value = "";
+            } catch (error) {
+                console.error("SBT issue error:", error);
+                const msg = error?.reason || error?.message || "Transaction rejected.";
+                setBanner('admin-status-banner', 'SBT issuance failed: ' + msg, 'error');
+                toast('SBT Failed', msg, 'error');
+            } finally {
+                if (button) { button.disabled = false; button.innerText = "Issue Faculty SBT"; }
+            }
+        }
+
+        // ── Record Card Renderer ────────────────────────────────────
+        function renderRecordCard(container, record, isGlobal) {
+            const fName        = record.fileName  || record[0] || "Unnamed Record";
+            const ipfsRef      = record.ipfsHash  || record[1] || "";
+            const categoryCode = record.category  || record[2] || "Unassigned";
+            const score        = Number(record.aiScore !== undefined ? record.aiScore : record[3] || 0);
+            const blockTime    = Number(record.timestamp !== undefined ? record.timestamp : record[4] || 0);
+            const verifiedFlag = record.isVerified !== undefined ? record.isVerified : record[6];
+            const verifiedBy   = record.verifiedBy || record[7] || "";
+            const formattedDate = blockTime > 0 ? new Date(blockTime * 1000).toLocaleDateString() : "N/A";
+            const badgeColor   = score >= 50 ? "#10b981" : "#ef4444";
+            const webGatewayUrl = `https://gateway.pinata.cloud/ipfs/${ipfsRef}`;
+            const scanUrl       = `${POLYGON_SCAN_BASE}/address/${currentUser}`;
+
+            container.innerHTML += `
+                <div class="step-card active" style="opacity:1; pointer-events:auto; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+                        <strong style="font-size:15px; color:var(--text-main);">${fName}</strong>
+                        <span class="wallet-pill" style="background:${badgeColor}; color:white; border:none;">AI Score: ${score}%</span>
+                    </div>
+                    <p style="font-family:monospace; font-size:11px; margin:8px 0; color:var(--text-muted); word-break:break-all;">
+                        IPFS: <a href="${webGatewayUrl}" target="_blank" style="color:var(--accent-blue); text-decoration:underline;">${ipfsRef.slice(0,20)}…</a>
+                    </p>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-top:10px; border-top:1px solid var(--border-color); padding-top:8px; flex-wrap:wrap; gap:6px;">
+                        <span>
+                            <strong>${categoryCode.toUpperCase()}</strong> &nbsp;·&nbsp; ${formattedDate}
+                            &nbsp;·&nbsp; <a href="${scanUrl}" target="_blank" class="polygonscan-link">PolygonScan ↗</a>
+                        </span>
+                        ${verifiedFlag
+                            ? `<span style="color:#10b981; font-weight:700;">✓ Faculty Verified${verifiedBy ? ' by ' + verifiedBy.slice(0,6) + '…' : ''}</span>`
+                            : `<span style="color:var(--text-muted);">⏳ Awaiting Verification</span>`
+                        }
+                    </div>
+                </div>
+            `;
+        }
+
+        // ── Discovery Feed Filters ──────────────────────────────────
+        function filterGenre(genre) {
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            const activeFilter = document.getElementById('filter-all');
+            if (activeFilter && genre === 'all') activeFilter.classList.add('active');
+            const categorySelect = document.getElementById('category-filter-select');
+            if (categorySelect) categorySelect.value = '';
+            const globalFeed = document.getElementById('global-discovery-feed');
+            if (!globalFeed) return;
+            globalFeed.innerHTML = "";
+            const filtered = globalCachedRecords.filter(r => {
+                const cat   = r.category || r[2] || "";
+                const score = Number(r.aiScore !== undefined ? r.aiScore : r[3] || 0);
+                return score >= 50 && (genre === 'all' || cat === genre);
+            });
+            if (filtered.length === 0) {
+                globalFeed.innerHTML = '<p class="file-notice">No records found for this field.</p>';
+                return;
+            }
+            filtered.forEach(record => renderRecordCard(globalFeed, record, true));
+        }
+
+        function filterByCategory(value) {
+            if (!value) { filterGenre('all'); return; }
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            const globalFeed = document.getElementById('global-discovery-feed');
+            if (!globalFeed) return;
+            globalFeed.innerHTML = "";
+            const filtered = globalCachedRecords.filter(r => {
+                const cat   = r.category || r[2] || "";
+                const score = Number(r.aiScore !== undefined ? r.aiScore : r[3] || 0);
+                return score >= 50 && cat === value;
+            });
+            if (filtered.length === 0) {
+                globalFeed.innerHTML = '<p class="file-notice">No records found for this discipline.</p>';
+                return;
+            }
+            filtered.forEach(record => renderRecordCard(globalFeed, record, true));
+        }
+
+        // ── Tab Switcher ────────────────────────────────────────────
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-window').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.menu-item').forEach(btn => btn.classList.remove('active'));
+            const targetTab = document.getElementById('tab-' + tabName);
+            const targetBtn = document.getElementById('btn-' + tabName);
+            if (targetTab) targetTab.classList.remove('hidden');
+            if (targetBtn) targetBtn.classList.add('active');
+
+            // Show loading spinner when switching to discovery if feed is empty
+            if (tabName === 'discovery') {
+                const globalFeed = document.getElementById('global-discovery-feed');
+                const loader     = document.getElementById('discovery-loading');
+                if (globalFeed && globalFeed.innerHTML.trim() === '') {
+                    if (loader) loader.style.display = 'block';
+                    // Re-populate once blockchain data is ready
+                    const poller = setInterval(function () {
+                        if (globalCachedRecords.length > 0 || readContract) {
+                            if (loader) loader.style.display = 'none';
+                            filterGenre('all');
+                            clearInterval(poller);
+                        }
+                    }, 500);
+                }
+            }
+        }
+
+        // ── Utility: Action Button State ────────────────────────────
+        function setActionBtn(btn, disabled, label) {
+            if (!btn) return;
+            btn.disabled = disabled;
+            btn.style.opacity = disabled ? '0.65' : '1';
+            btn.innerText = label;
+        }
+
+        function resetUploadButton() {
+            const actionBtn = document.getElementById('upload-action-btn');
+            setActionBtn(actionBtn, false, 'Submit to Blockchain');
+        }
+
+        // ── Utility: Deterministic AI Score (simulation) ─────────────
+        // Production note: replace with a real plagiarism API call.
+        function generateDeterministicScore(fileName, fileSize) {
+            let hash = 0;
+            const str = fileName + fileSize;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return Math.abs(hash % 51) + 40;
+        }
+
+        // ── Utility: Pin to IPFS via Pinata ────────────────────────
+        // Production note: move this fetch() to a backend server so
+        // PINATA_JWT_KEY is never exposed in client-side JavaScript.
+        async function pinFileToIPFS(file) {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("pinataMetadata", JSON.stringify({ name: file.name }));
+            const response = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + PINATA_JWT_KEY },
+                body: formData
+            });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error((errData.error && errData.error.details) || `IPFS upload failed (${response.status})`);
+            }
+            const result = await response.json();
+            return result.IpfsHash;
+        }
+
+        // ── Utility: Ensure Correct Network ─────────────────────────
+        async function ensurePolygonAmoy() {
+            const AMOY_CHAIN_ID = '0x13882';
+            const currentChain  = await window.ethereum.request({ method: 'eth_chainId' });
+            if (currentChain.toLowerCase() === AMOY_CHAIN_ID) return;
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: AMOY_CHAIN_ID }]
+                });
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: AMOY_CHAIN_ID,
+                            chainName: 'Polygon Amoy Testnet',
+                            nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+                            rpcUrls: ['https://rpc-amoy.polygon.technology', 'https://polygon-amoy-bor-rpc.publicnode.com'],
+                            blockExplorerUrls: ['https://amoy.polygonscan.com']
+                        }]
+                    });
+                } else {
+                    throw switchError;
+                }
+            }
+        }
+
+        // ── Event Listeners ─────────────────────────────────────────
+        function setupEventListeners() {
+            const fileInput        = document.getElementById('document-file');
+            const actionBtn        = document.getElementById('upload-action-btn');
+            const fileNameDisplay  = document.getElementById('selected-file-name');
+            const issueFacultyBtn  = document.getElementById('issue-faculty-btn');
+
+            if (fileInput) {
+                fileInput.addEventListener('change', () => {
+                    if (fileInput.files.length > 0) {
+                        if (fileNameDisplay) fileNameDisplay.innerText = fileInput.files[0].name;
+                        if (actionBtn) actionBtn.disabled = false;
+                        clearBanner('submit-status-banner');
+                    } else {
+                        if (fileNameDisplay) fileNameDisplay.innerText = 'No file chosen';
+                        if (actionBtn) actionBtn.disabled = true;
+                    }
+                });
+            }
+
+            if (actionBtn) actionBtn.addEventListener('click', executeSubmissionPipeline);
+            if (issueFacultyBtn) issueFacultyBtn.addEventListener('click', issueFacultyCredential);
+        }
+
+        // ── Logout ───────────────────────────────────────────────────
+        function logout() {
+            localStorage.setItem('userLogoutIntent', 'true');
+            localStorage.removeItem('userWallet');
+            window.location.href = 'index.html';
+        }
+
+        // ── Boot ─────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', bootstrapApplication);
+    </script>
+</body>
+</html>
